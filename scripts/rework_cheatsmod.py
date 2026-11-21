@@ -928,6 +928,22 @@ def patch_mi_content(raw_txt, label):
     txt, ok3 = replace_trigger_block(txt, '{"cheats/active/aimrange"', make_aimrange_trigger())
 
     # 9. Upgrade cheats/units/mine and cheats/units/mine_ap to spawn 8 armed mines per click
+    # Fix cheat_mine and cheat_mine_ap buttons to use eventEnd (fires AFTER placing waypoint 30001 on the ground!)
+    txt = txt.replace(
+        '\t\t\t\t{eventStart "cheats/mine"}\n\t\t\t\t{waypoint "30001"}',
+        '\t\t\t\t{eventStart "cheat_click"}\n\t\t\t\t{eventEnd "cheats/mine"}\n\t\t\t\t{waypoint "30001"}',
+    )
+    txt = txt.replace(
+        '\t\t\t\t{eventStart "cheats/mine_ap"}\n\t\t\t\t{waypoint "30001"}',
+        '\t\t\t\t{eventStart "cheat_click"}\n\t\t\t\t{eventEnd "cheats/mine_ap"}\n\t\t\t\t{waypoint "30001"}',
+    )
+
+    # Remove dead outdated_game_cheat hide calls that spam game.log
+    txt = txt.replace(
+        '\t\t\t\t\t{"reinforcement"\n\t\t\t\t\t\t{operation hide}\n\t\t\t\t\t\t{name outdated_game_cheat}\n\t\t\t\t\t}\n',
+        '',
+    )
+
     old_mine_spawn = """\t\t\t\t\t{"spawn"
 \t\t\t\t\t\t{entity "mine_antitank_cheat"}
 \t\t\t\t\t\t{waypoint "30001"}
@@ -952,12 +968,53 @@ def patch_mi_content(raw_txt, label):
     if txt.count(old_mine_ap_spawn) == 4:
         txt = txt.replace(old_mine_ap_spawn, new_mine_ap_spawn + "\n" + new_mine_ap_spawn)
 
-    # Faster arming in minegetsfilled (0.2s instead of 1s)
-    txt = txt.replace(
-        '\t\t\t{"minegetsfilled"\n\t\t\t\t{"delay"\n\t\t\t\t\t{time 1}\n\t\t\t\t}',
-        '\t\t\t{"minegetsfilled"\n\t\t\t\t{"delay"\n\t\t\t\t\t{time 0.2}\n\t\t\t\t}',
-        1,
-    )
+    # Faster arming in minegetsfilled (0.2s) and use cheat_options-player$ when cheat_enemyspawn$ == 0
+    mine_arm_blocks = []
+    for p in range(8):
+        mine_arm_blocks.append(f"""\t\t\t\t{{"if"
+\t\t\t\t\t{{condition
+\t\t\t\t\t\t{{type cmp_i}}
+\t\t\t\t\t\t{{var "cheat_options-player$"}}
+\t\t\t\t\t\t{{op "=="}}
+\t\t\t\t\t\t{{value {p}}}
+\t\t\t\t\t}}
+\t\t\t\t\t{{"mine_state"
+\t\t\t\t\t\t{{selector
+\t\t\t\t\t\t\t{{source advanced}}
+\t\t\t\t\t\t\t{{ignore_captured_by_user 0}}
+\t\t\t\t\t\t\t{{group
+\t\t\t\t\t\t\t\t{{select
+\t\t\t\t\t\t\t\t\t{{tag
+\t\t\t\t\t\t\t\t\t\t{{tag cheat_mine}}
+\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t}}
+\t\t\t\t\t\t{{action arm}}
+\t\t\t\t\t\t{{miner "{p}"}}
+\t\t\t\t\t}}
+\t\t\t\t}}""")
+    new_minegetsfilled = f"""\t\t\t{{"minegetsfilled"
+\t\t\t\t{{"delay"
+\t\t\t\t\t{{time 0.2}}
+\t\t\t\t}}
+{chr(10).join(mine_arm_blocks)}
+\t\t\t\t{{"entity_state"
+\t\t\t\t\t{{selector
+\t\t\t\t\t\t{{source advanced}}
+\t\t\t\t\t\t{{ignore_captured_by_user 0}}
+\t\t\t\t\t\t{{group
+\t\t\t\t\t\t\t{{select
+\t\t\t\t\t\t\t\t{{tag
+\t\t\t\t\t\t\t\t\t{{tag cheat_mine}}
+\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t}}
+\t\t\t\t\t}}
+\t\t\t\t\t{{tag_remove cheat_mine}}
+\t\t\t\t}}
+\t\t\t}}"""
+    txt, _ = replace_trigger_block(txt, '{"minegetsfilled"', new_minegetsfilled)
 
     # 10. Fix Infinite Ammo: spawn ammo_cheatsmod_global when turned ON, delete when turned OFF
     old_infammo_on = """\t\t\t\t\t\t\t{"entity_state"
