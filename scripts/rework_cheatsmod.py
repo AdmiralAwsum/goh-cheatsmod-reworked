@@ -1,6 +1,8 @@
+import io
 import os
 import re
 import zipfile
+from PIL import Image, ImageDraw
 
 MOD = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "mod")
 
@@ -730,6 +732,90 @@ def replace_trigger_block(txt, trigger_header, new_block):
     return "\n".join(new_lines), True
 
 
+def generate_custom_button_icons():
+    """Generate crisp 104x52 3-state (_00, _01, _02) TGA icons in interface.pak using menu_item as the base plate."""
+    iface_pak = os.path.join(MOD, "resource", "interface.pak")
+    tmp_pak = iface_pak + ".tmp"
+
+    def draw_star(draw, cx, cy, r_outer, r_inner, fill, outline):
+        import math
+        pts = []
+        for i in range(10):
+            ang = math.radians(-90 + i * 36)
+            r = r_outer if i % 2 == 0 else r_inner
+            pts.append((cx + r * math.cos(ang), cy + r * math.sin(ang)))
+        draw.polygon(pts, fill=fill, outline=outline)
+
+    def draw_repair(draw):
+        # Gold wrench on right side (x ~ 76, y ~ 26)
+        draw.line([(66, 36), (86, 16)], fill=(235, 195, 70, 255), width=5)
+        draw.ellipse([80, 10, 94, 24], fill=(235, 195, 70, 255), outline=(40, 30, 10, 255))
+        draw.polygon([(86, 16), (95, 11), (92, 20)], fill=(45, 45, 45, 255))
+        draw.ellipse([60, 31, 71, 42], fill=(235, 195, 70, 255), outline=(40, 30, 10, 255))
+
+    def draw_destroyarmor(draw):
+        # Red target crosshair + X
+        draw.ellipse([66, 12, 92, 38], outline=(235, 70, 60, 255), width=3)
+        draw.line([(79, 8), (79, 42)], fill=(235, 70, 60, 255), width=2)
+        draw.line([(62, 25), (96, 25)], fill=(235, 70, 60, 255), width=2)
+        draw.ellipse([75, 21, 83, 29], fill=(255, 190, 60, 255))
+
+    def draw_veterancy(draw):
+        # Bright gold star + double chevron
+        draw_star(draw, 79, 20, 11, 4.5, (255, 215, 65, 255), (60, 40, 10, 255))
+        draw.line([(69, 35), (79, 30), (89, 35)], fill=(255, 215, 65, 255), width=3)
+        draw.line([(69, 41), (79, 36), (89, 41)], fill=(255, 215, 65, 255), width=3)
+
+    def draw_win(draw):
+        # Emerald badge + gold victory star
+        draw.ellipse([65, 12, 93, 40], fill=(35, 140, 75, 240), outline=(240, 200, 75, 255), width=2)
+        draw_star(draw, 79, 26, 10, 4.2, (255, 220, 75, 255), (40, 30, 10, 255))
+
+    def draw_fastminer(draw):
+        # Mine disc + yellow speed bolt
+        draw.ellipse([65, 22, 87, 38], fill=(160, 170, 155, 255), outline=(30, 35, 30, 255), width=2)
+        draw.rectangle([72, 18, 80, 23], fill=(210, 180, 70, 255))
+        draw.polygon([(88, 10), (80, 25), (86, 25), (82, 40), (94, 22), (87, 22)], fill=(255, 220, 50, 255), outline=(40, 30, 10, 255))
+
+    icon_drawers = {
+        "repair": draw_repair,
+        "destroyarmor": draw_destroyarmor,
+        "veterancy": draw_veterancy,
+        "win": draw_win,
+        "fastminer": draw_fastminer,
+    }
+
+    with zipfile.ZipFile(iface_pak, "r") as zin, zipfile.ZipFile(tmp_pak, "w", compression=zipfile.ZIP_DEFLATED) as zout:
+        base_plates = {}
+        for state in ("00", "01", "02"):
+            raw = zin.read(f"interface/scene/unit_icon/whitesnoop/menus/menu_item_{state}.tga")
+            base_plates[state] = Image.open(io.BytesIO(raw)).convert("RGBA")
+
+        generated_names = set()
+        for icon_name, drawer in icon_drawers.items():
+            for state in ("00", "01", "02"):
+                out_name = f"interface/scene/unit_icon/whitesnoop/cheats/{icon_name}_{state}.tga"
+                generated_names.add(out_name.lower())
+
+        for item in zin.infolist():
+            if item.filename.lower() in generated_names:
+                continue
+            zout.writestr(item, zin.read(item.filename))
+
+        for icon_name, drawer in icon_drawers.items():
+            for state in ("00", "01", "02"):
+                im = base_plates[state].copy()
+                d = ImageDraw.Draw(im)
+                drawer(d)
+                buf = io.BytesIO()
+                im.save(buf, format="TGA")
+                out_name = f"interface/scene/unit_icon/whitesnoop/cheats/{icon_name}_{state}.tga"
+                zout.writestr(out_name, buf.getvalue())
+
+    os.replace(tmp_pak, iface_pak)
+    print("Generated 5 custom 3-state TGA button icons in interface.pak.")
+
+
 def patch_mi_content(raw_txt, label):
     txt = raw_txt.replace("\r\n", "\n")
 
@@ -761,9 +847,9 @@ def patch_mi_content(raw_txt, label):
     if '{"cheat_conquest_win"' not in txt:
         win_btn = """\t\t\t{"cheat_conquest_win"
 \t\t\t\t{state hidden}
-\t\t\t\t{text "Instant Win (Conquest)"}
-\t\t\t\t{image "whitesnoop/cheats/enabled"}
-\t\t\t\t{hint "Immediately win the current Conquest battle"}
+\t\t\t\t{text "Instant Win"}
+\t\t\t\t{image "whitesnoop/cheats/win"}
+\t\t\t\t{hint "Immediately win the current Conquest battle with full victory rewards"}
 \t\t\t\t{count -1}
 \t\t\t\t{score 0}
 \t\t\t\t{delay 0}
@@ -775,6 +861,55 @@ def patch_mi_content(raw_txt, label):
             win_btn + '\n\t\t\t{"cheat_repair"\n',
             1,
         )
+
+    # 3c. Polish all button icons, titles, and tooltips
+    button_updates = {
+        "cheats": ('"CheatsMod"', '"whitesnoop/menus/whitesnewps"', '"Open CheatsMod 2.6 Reworked menu (Spawn Units, Cheats, Support, Settings)"'),
+        "cheatmenu_1": ('"Spawn Units"', None, '"Spawn infantry, squads, BTRs, tanks, artillery, or aircraft"'),
+        "cheatmenu_2": ('"Cheats"', None, '"Toggle God Mode, Infinite Ammo, Range, Instakill, Max Veterancy, Repairs, and Instant Win"'),
+        "cheatmenu_3": ('"Settings"', None, '"Switch active player slot (0-7), enemy spawn toggle, and aircraft altitude"'),
+        "cheat_addmoney": ('"+1000 MP"', None, '"Add +1000 Manpower / Reinforcement Points (skirmish & singleplayer)"'),
+        "cheat_godmode_off": ('"God Mode"', None, '"Enable: make all your units and vehicles invulnerable"'),
+        "cheat_godmode_on": ('"God Mode"', None, '"Disable: turn off God Mode"'),
+        "cheat_infammo_off": ('"Infinite Ammo"', None, '"Enable: spawn a map-wide (500m) resupply aura refilling ammo & fuel"'),
+        "cheat_infammo_on": ('"Infinite Ammo"', None, '"Disable: remove map-wide resupply aura"'),
+        "cheat_fuel-stam-off": ('"Fuel & Stamina"', None, '"Enable: keep soldier stamina at 100% and vehicle fuel full"'),
+        "cheat_fuel-stam-on": ('"Fuel & Stamina"', None, '"Disable: turn off infinite fuel & stamina"'),
+        "cheat_aimrange_accuracy_on": ('"Range & Accuracy"', None, '"Enable: grant 3x weapon range and 5x accuracy to your units"'),
+        "cheat_aimrange_accuracy_off": ('"Range & Accuracy"', None, '"Disable: restore normal weapon range and accuracy"'),
+        "cheatweakenemy": ('"Instakill"', None, '"Enable: reduce enemy soldier HP to 1 and enemy vehicle armor to 1%"'),
+        "cheatweakenemyoff": ('"Instakill"', None, '"Disable: restore normal enemy HP and armor"'),
+        "cheat_addexp": ('"Max Veterancy"', '"whitesnoop/cheats/veterancy"', '"Promote all your alive infantry, gun crews, and vehicle crews to Level 8"'),
+        "cheat_conquest_win": ('"Instant Win"', '"whitesnoop/cheats/win"', '"Immediately win the current Conquest battle with full victory rewards"'),
+        "cheat_repair": ('"Repair Vehicles"', '"whitesnoop/cheats/repair"', '"Instantly repair hull, turret, gun, engine, tracks & wheels on all your vehicles"'),
+        "cheat_destroyarmor": ('"Break Enemy Armor"', '"whitesnoop/cheats/destroyarmor"', '"Break gun, turret, engine & tracks on all enemy vehicles on the map"'),
+        "cheat_explosion": ('"Explosion"', None, '"Click on the ground to trigger an explosion at cursor"'),
+        "cheat_artillery": ('"Artillery Barrage"', None, '"Click on the ground to call an artillery barrage at cursor"'),
+        "cheat_mortar": ('"Mortar Barrage"', None, '"Click on the ground to call a mortar barrage at cursor"'),
+        "cheat_miner": ('"Fast Mine Engineer"', '"whitesnoop/cheats/fastminer"', '"Click on ground to spawn an engineer with 40 AT + 40 AP instant (0.1s) mines (Hold Shift to queue!)"'),
+        "cheat_mine": ('"AT Mines (x8)"', None, '"Click on the ground to drop 8 armed Anti-Tank mines"'),
+        "cheat_mine_ap": ('"AP Mines (x8)"', None, '"Click on the ground to drop 8 armed Anti-Personnel mines"'),
+        "cheat_ammo": ('"Ammo Box"', None, '"Click on ground to deploy an FPS-friendly resupply crate (all factions + MACE)"'),
+        "cheat_ammodrop": ('"Paradrop Ammo"', None, '"Click on the ground to paradrop a supply crate at cursor"'),
+        "cheat_delete": ('"Clear Cheated"', None, '"Delete all units & objects spawned by CheatsMod from the map"'),
+        "cheat_return": ('"Back"', None, '"Return to previous menu"'),
+    }
+    for btn_id, (new_text, new_img, new_hint) in button_updates.items():
+        pat = re.compile(
+            r'(\t\t\t\{"' + re.escape(btn_id) + r'"\n\t\t\t\t\{state hidden\}\n\t\t\t\t\{text )[^\n]+(\}\n\t\t\t\t\{image )[^\n]+(\}\n\t\t\t\t\{hint )[^\n]+(\}\n)'
+        )
+        def _repl(m):
+            img_val = new_img if new_img is not None else m.group(2).split("{image ", 1)[-1] if False else None
+            return m.group(0)
+        # Simpler line-targeted replacement per button block
+        bpat = re.compile(
+            r'(\t\t\t\{"' + re.escape(btn_id) + r'"\n\t\t\t\t\{state hidden\}\n)\t\t\t\t\{text [^\n]+\}\n(\t\t\t\t\{image [^\n]+\}\n)\t\t\t\t\{hint [^\n]+\}\n'
+        )
+        m = bpat.search(txt)
+        if m:
+            img_line = f'\t\t\t\t{{image {new_img}}}\n' if new_img else m.group(2)
+            rep = f'{m.group(1)}\t\t\t\t{{text {new_text}}}\n{img_line}\t\t\t\t{{hint {new_hint}}}\n'
+            txt = txt[:m.start()] + rep + txt[m.end():]
 
     # 4. Add cheat_miner reinforcement button right after cheat_mine_ap button
     if '{"cheat_miner"' not in txt:
@@ -1117,5 +1252,6 @@ if __name__ == "__main__":
     rewrite_localization()
     write_conquest_budget_files()
     rewrite_supply_and_entities()
+    generate_custom_button_icons()
     rewrite_cheatsmod_pak()
     print("ALL REWORK STEPS COMPLETED!")
