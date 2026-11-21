@@ -75,7 +75,7 @@ def build_cheatsmod():
     cheat_panel = (
         anchor
         + '\r\n\t\t\t\t\t<FlowPanel id="cheat_reinforcement_layer" direction="vertical" halign="right" valign="top" gap="8" justify="false" enableif="(game.campaign or game.multiplayer) and !game.cooperative and !game.singleplayer and !gui.editor">'
-        + '\r\n\t\t\t\t\t\t<Insets right="20" top="90"/>'
+        + '\r\n\t\t\t\t\t\t<Insets right="20" top="115"/>'
         + '\r\n\t\t\t\t\t\t<Children>'
         + '\r\n\t\t\t\t\t\t\t<DialogRef refid="gui_gc_reinforcement"/>'
         + '\r\n\t\t\t\t\t\t</Children>'

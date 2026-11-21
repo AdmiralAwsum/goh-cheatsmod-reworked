@@ -35,14 +35,21 @@ def rewrite_localization():
         "c_deactivated_0": "Cheat Deactivated",
         "cheats_option_select": "Cheat Settings:",
         "Autoassign": "<e(shadow)><c(f2c200)>Auto-Assign</c></e>",
-        "Set to player0": "Switch active player if cheats don't affect your units.\nCurrent Player: <e(shadow)><c(ffffff)>0</c></e>",
-        "Set to player1": "Switch active player if cheats don't affect your units.\nCurrent Player: <e(shadow)><c(ff0000)>1</c></e>",
-        "Set to player2": "Switch active player if cheats don't affect your units.\nCurrent Player: <e(shadow)><c(00d319)>2</c></e>",
-        "Set to player3": "Switch active player if cheats don't affect your units.\nCurrent Player: <e(shadow)><c(f2c200)>3</c></e>",
+        "Set to player0": "Override Player 0 (All cheats already auto-target human units; click to cycle)",
+        "Set to player1": "Override Player 1 (All cheats already auto-target human units; click to cycle)",
+        "Set to player2": "Override Player 2 (All cheats already auto-target human units; click to cycle)",
+        "Set to player3": "Override Player 3 (All cheats already auto-target human units; click to cycle)",
+        "Set to player4": "Override Player 4 (All cheats already auto-target human units; click to cycle)",
+        "Set to player5": "Override Player 5 (All cheats already auto-target human units; click to cycle)",
+        "Set to player6": "Override Player 6 (All cheats already auto-target human units; click to cycle)",
+        "Set to player7": "Override Player 7 (All cheats already auto-target human units; click to cycle)",
         "Deploy mines": "AT Mines (x8)",
-        "Lay a mine field": "Spawn 8 armed Anti-Tank mines at cursor",
+        "Lay a mine field": "Click on the ground to drop 8 armed Anti-Tank mines",
         "Fast Miner": "Fast Mine Engineer",
-        "Fast Miner hint": "Spawn Engineer with 40 fast AT + 40 fast AP mines (Hold Shift to queue minefields!)",
+        "Fast Miner hint": "Click on ground to spawn Engineer with 40 AT + 40 AP instant (0.1s) mines. Hold Shift to queue!",
+        "Support": "Ammo Boxes, Fast Mine Engineer, AT/AP Mines, Artillery, Mortar & Cleanup",
+        "Cheats below effects enemy": "Cheats below target enemy units on the map",
+        "Destroy enemy armor": "Break gun, turret, engine & tracks on all enemy vehicles",
     }
 
     out = []
@@ -65,11 +72,24 @@ def rewrite_localization():
         else:
             out.append(line)
 
-    # Insert Fast Miner tags before final '}'
+    # Insert Fast Miner + missing player4..7 tags before final '}'
+    extra_tags = [
+        '\t{"Fast Miner" "Fast Mine Engineer"}',
+        '\t{"Fast Miner hint" "Click on ground to spawn Engineer with 40 AT + 40 AP instant (0.1s) mines. Hold Shift to queue!"}',
+        '\t{"Set to player4" "Override Player 4 (All cheats already auto-target human units; click to cycle)"}',
+        '\t{"Set to player5" "Override Player 5 (All cheats already auto-target human units; click to cycle)"}',
+        '\t{"Set to player6" "Override Player 6 (All cheats already auto-target human units; click to cycle)"}',
+        '\t{"Set to player7" "Override Player 7 (All cheats already auto-target human units; click to cycle)"}',
+    ]
+    existing = "\n".join(out)
     for idx in range(len(out) - 1, -1, -1):
         if out[idx].strip() == "}":
-            out.insert(idx, '\t{"Fast Miner" "Fast Mine Engineer"}')
-            out.insert(idx + 1, '\t{"Fast Miner hint" "Spawn Engineer with 40 fast AT + 40 fast AP mines (Hold Shift to queue!)"}')
+            pos = idx
+            for tag_line in extra_tags:
+                key = tag_line.split('"')[1]
+                if f'"{key}"' not in existing:
+                    out.insert(pos, tag_line)
+                    pos += 1
             break
 
     result = "\r\n".join(out) + "\r\n"
@@ -347,6 +367,9 @@ def make_addexp_trigger():
 \t\t\t\t\t\t{{mode reset}}
 \t\t\t\t\t\t{{delay 0}}
 \t\t\t\t\t}}
+\t\t\t\t\t{{"delay"
+\t\t\t\t\t\t{{time 0.1}}
+\t\t\t\t\t}}
 \t\t\t\t\t{{"trigger"
 \t\t\t\t\t\t{{name "cheats/active/addexp"}}
 \t\t\t\t\t}}
@@ -489,6 +512,9 @@ def make_repair_trigger():
 \t\t\t\t\t\t{{mode reset}}
 \t\t\t\t\t\t{{delay 0}}
 \t\t\t\t\t}}
+\t\t\t\t\t{{"delay"
+\t\t\t\t\t\t{{time 0.1}}
+\t\t\t\t\t}}
 \t\t\t\t\t{{"trigger"
 \t\t\t\t\t\t{{name "cheats/active/repair"}}
 \t\t\t\t\t}}
@@ -551,6 +577,9 @@ def make_destroyarmor_trigger():
 \t\t\t\t\t\t{{event "cheats/destroyarmor"}}
 \t\t\t\t\t\t{{mode reset}}
 \t\t\t\t\t\t{{delay 0}}
+\t\t\t\t\t}}
+\t\t\t\t\t{{"delay"
+\t\t\t\t\t\t{{time 0.1}}
 \t\t\t\t\t}}
 \t\t\t\t\t{{"trigger"
 \t\t\t\t\t\t{{name "cheats/destroyarmor"}}
@@ -682,7 +711,7 @@ def make_miner_trigger():
 \t\t\t\t\t{{"actor_to_waypoint"
 \t\t\t\t\t\t{{selector
 \t\t\t\t\t\t\t{{ignore_captured_by_user 0}}
-\t\t\t\t\t\t\t{{tag cheat_infantry-ger1}}
+\t\t\t\t\t\t\t{{tag "cheat_infantry-ger1"}}
 \t\t\t\t\t\t}}
 \t\t\t\t\t\t{{waypoint "30001"}}
 \t\t\t\t\t\t{{clone}}
@@ -722,11 +751,15 @@ def make_miner_trigger():
 {sel_clone}
 \t\t\t\t\t\t{{tag_add cheat_delete}}
 \t\t\t\t\t\t{{tag_remove cheat_infantry_spawn}}
+\t\t\t\t\t\t{{tag_remove "cheat_infantry-ger1"}}
 \t\t\t\t\t}}
 \t\t\t\t\t{{"event"
 \t\t\t\t\t\t{{event "cheats/fast_miner"}}
 \t\t\t\t\t\t{{mode reset}}
 \t\t\t\t\t\t{{delay 0}}
+\t\t\t\t\t}}
+\t\t\t\t\t{{"delay"
+\t\t\t\t\t\t{{time 0.1}}
 \t\t\t\t\t}}
 \t\t\t\t\t{{"trigger"
 \t\t\t\t\t\t{{name "cheats/units/fast_miner"}}
@@ -757,6 +790,9 @@ def make_conquest_win_trigger():
 \t\t\t\t\t\t{event "cheats/conquest_win"}
 \t\t\t\t\t\t{mode reset}
 \t\t\t\t\t\t{delay 0}
+\t\t\t\t\t}
+\t\t\t\t\t{"delay"
+\t\t\t\t\t\t{time 0.1}
 \t\t\t\t\t}
 \t\t\t\t\t{"trigger"
 \t\t\t\t\t\t{name "cheats/active/conquest_win"}
@@ -851,12 +887,36 @@ def generate_custom_button_icons():
         draw.rectangle([72, 18, 80, 23], fill=(210, 180, 70, 255))
         draw.polygon([(88, 10), (80, 25), (86, 25), (82, 40), (94, 22), (87, 22)], fill=(255, 220, 50, 255), outline=(40, 30, 10, 255))
 
+    def draw_menu_spawn(draw):
+        # Clean tank/unit silhouette arrow on right
+        draw.rectangle([65, 24, 90, 34], fill=(185, 200, 175, 255), outline=(30, 35, 30, 255))
+        draw.rectangle([71, 18, 84, 24], fill=(185, 200, 175, 255), outline=(30, 35, 30, 255))
+        draw.line([(84, 21), (95, 21)], fill=(220, 225, 210, 255), width=3)
+
+    def draw_menu_cheats(draw):
+        # Clean gold shield/star emblem
+        draw_star(draw, 79, 26, 12, 5, (255, 205, 60, 255), (50, 35, 10, 255))
+
+    def draw_menu_settings(draw):
+        # Clean gear ring
+        draw.ellipse([68, 15, 90, 37], outline=(190, 205, 220, 255), width=4)
+        draw.ellipse([75, 22, 83, 30], fill=(50, 52, 48, 255))
+
+    def draw_menu_support(draw):
+        # Clean supply/support cross + chevron
+        draw.rectangle([76, 14, 82, 38], fill=(215, 190, 85, 255))
+        draw.rectangle([67, 23, 91, 29], fill=(215, 190, 85, 255))
+
     icon_drawers = {
         "repair": draw_repair,
         "destroyarmor": draw_destroyarmor,
         "veterancy": draw_veterancy,
         "win": draw_win,
         "fastminer": draw_fastminer,
+        "menu_spawn": draw_menu_spawn,
+        "menu_cheats": draw_menu_cheats,
+        "menu_settings": draw_menu_settings,
+        "menu_support": draw_menu_support,
     }
 
     with zipfile.ZipFile(iface_pak, "r") as zin, zipfile.ZipFile(tmp_pak, "w", compression=zipfile.ZIP_DEFLATED) as zout:
@@ -940,62 +1000,13 @@ def patch_mi_content(raw_txt, label):
             1,
         )
 
-    # 3c. Polish all button icons, titles, and tooltips
-    button_updates = {
-        "cheats": ('"CheatsMod"', '"whitesnoop/menus/whitesnewps"', '"Open CheatsMod 2.6 Reworked menu (Spawn Units, Cheats, Support, Settings)"'),
-        "cheatmenu_1": ('"Spawn Units"', None, '"Spawn infantry, squads, BTRs, tanks, artillery, or aircraft"'),
-        "cheatmenu_2": ('"Cheats"', None, '"Toggle God Mode, Infinite Ammo, Range, Instakill, Max Veterancy, Repairs, and Instant Win"'),
-        "cheatmenu_3": ('"Settings"', None, '"Switch active player slot (0-7), enemy spawn toggle, and aircraft altitude"'),
-        "cheat_addmoney": ('"+1000 MP"', None, '"Add +1000 Manpower / Reinforcement Points (skirmish & singleplayer)"'),
-        "cheat_godmode_off": ('"God Mode"', None, '"Enable: make all your units and vehicles invulnerable"'),
-        "cheat_godmode_on": ('"God Mode"', None, '"Disable: turn off God Mode"'),
-        "cheat_infammo_off": ('"Infinite Ammo"', None, '"Enable: spawn a map-wide (500m) resupply aura refilling ammo & fuel"'),
-        "cheat_infammo_on": ('"Infinite Ammo"', None, '"Disable: remove map-wide resupply aura"'),
-        "cheat_fuel-stam-off": ('"Fuel & Stamina"', None, '"Enable: keep soldier stamina at 100% and vehicle fuel full"'),
-        "cheat_fuel-stam-on": ('"Fuel & Stamina"', None, '"Disable: turn off infinite fuel & stamina"'),
-        "cheat_aimrange_accuracy_on": ('"Range & Accuracy"', None, '"Enable: grant 3x weapon range and 5x accuracy to your units"'),
-        "cheat_aimrange_accuracy_off": ('"Range & Accuracy"', None, '"Disable: restore normal weapon range and accuracy"'),
-        "cheatweakenemy": ('"Instakill"', None, '"Enable: reduce enemy soldier HP to 1 and enemy vehicle armor to 1%"'),
-        "cheatweakenemyoff": ('"Instakill"', None, '"Disable: restore normal enemy HP and armor"'),
-        "cheat_addexp": ('"Max Veterancy"', '"whitesnoop/cheats/veterancy"', '"Promote all your alive infantry, gun crews, and vehicle crews to Level 8"'),
-        "cheat_conquest_win": ('"Instant Win"', '"whitesnoop/cheats/win"', '"Immediately win the current Conquest battle with full victory rewards"'),
-        "cheat_repair": ('"Repair Vehicles"', '"whitesnoop/cheats/repair"', '"Instantly repair hull, turret, gun, engine, tracks & wheels on all your vehicles"'),
-        "cheat_destroyarmor": ('"Break Enemy Armor"', '"whitesnoop/cheats/destroyarmor"', '"Break gun, turret, engine & tracks on all enemy vehicles on the map"'),
-        "cheat_explosion": ('"Explosion"', None, '"Click on the ground to trigger an explosion at cursor"'),
-        "cheat_artillery": ('"Artillery Barrage"', None, '"Click on the ground to call an artillery barrage at cursor"'),
-        "cheat_mortar": ('"Mortar Barrage"', None, '"Click on the ground to call a mortar barrage at cursor"'),
-        "cheat_miner": ('"Fast Mine Engineer"', '"whitesnoop/cheats/fastminer"', '"Click on ground to spawn an engineer with 40 AT + 40 AP instant (0.1s) mines (Hold Shift to queue!)"'),
-        "cheat_mine": ('"AT Mines (x8)"', None, '"Click on the ground to drop 8 armed Anti-Tank mines"'),
-        "cheat_mine_ap": ('"AP Mines (x8)"', None, '"Click on the ground to drop 8 armed Anti-Personnel mines"'),
-        "cheat_ammo": ('"Ammo Box"', None, '"Click on ground to deploy an FPS-friendly resupply crate (all factions + MACE)"'),
-        "cheat_ammodrop": ('"Paradrop Ammo"', None, '"Click on the ground to paradrop a supply crate at cursor"'),
-        "cheat_delete": ('"Clear Cheated"', None, '"Delete all units & objects spawned by CheatsMod from the map"'),
-        "cheat_return": ('"Back"', None, '"Return to previous menu"'),
-    }
-    for btn_id, (new_text, new_img, new_hint) in button_updates.items():
-        pat = re.compile(
-            r'(\t\t\t\{"' + re.escape(btn_id) + r'"\n\t\t\t\t\{state hidden\}\n\t\t\t\t\{text )[^\n]+(\}\n\t\t\t\t\{image )[^\n]+(\}\n\t\t\t\t\{hint )[^\n]+(\}\n)'
-        )
-        def _repl(m):
-            img_val = new_img if new_img is not None else m.group(2).split("{image ", 1)[-1] if False else None
-            return m.group(0)
-        # Simpler line-targeted replacement per button block
-        bpat = re.compile(
-            r'(\t\t\t\{"' + re.escape(btn_id) + r'"\n\t\t\t\t\{state hidden\}\n)\t\t\t\t\{text [^\n]+\}\n(\t\t\t\t\{image [^\n]+\}\n)\t\t\t\t\{hint [^\n]+\}\n'
-        )
-        m = bpat.search(txt)
-        if m:
-            img_line = f'\t\t\t\t{{image {new_img}}}\n' if new_img else m.group(2)
-            rep = f'{m.group(1)}\t\t\t\t{{text {new_text}}}\n{img_line}\t\t\t\t{{hint {new_hint}}}\n'
-            txt = txt[:m.start()] + rep + txt[m.end():]
-
-    # 4. Add cheat_miner reinforcement button right after cheat_mine_ap button
+    # 4. Add cheat_miner reinforcement button right before cheat_mine
     if '{"cheat_miner"' not in txt:
         miner_btn = """\t\t\t{"cheat_miner"
 \t\t\t\t{state hidden}
 \t\t\t\t{text "Fast Mine Engineer"}
-\t\t\t\t{image "whitesnoop/menus/infantry"}
-\t\t\t\t{hint "mission/singlecheats/Fast Miner hint"}
+\t\t\t\t{image "whitesnoop/cheats/fastminer"}
+\t\t\t\t{hint "Click on ground to spawn Engineer with 40 AT + 40 AP instant (0.1s) mines. Hold Shift to queue!"}
 \t\t\t\t{count -1}
 \t\t\t\t{score 0}
 \t\t\t\t{delay 0}
@@ -1008,6 +1019,73 @@ def patch_mi_content(raw_txt, label):
             miner_btn + '\n\t\t\t{"cheat_mine"\n',
             1,
         )
+
+    # 4b. Polish all button icons, titles, and tooltips (runs AFTER inserting new buttons!)
+    button_updates = {
+        "cheats": ('"CheatsMod"', '"whitesnoop/menus/whitesnewps"', '"Open CheatsMod 2.6 Reworked menu (Spawn Units, Cheats, Settings)"'),
+        "cheatmenu_1": ('"Spawn Units"', '"whitesnoop/cheats/menu_spawn"', '"Spawn infantry, squads, BTRs, tanks, artillery, aircraft, or support tools"'),
+        "cheatmenu_2": ('"Cheats"', '"whitesnoop/cheats/menu_cheats"', '"Combat cheats: God Mode, Infinite Ammo, Range, Instakill, Max Veterancy, Repairs, Instant Win"'),
+        "cheatmenu_3": ('"Settings"', '"whitesnoop/cheats/menu_settings"', '"Player slot override (0-7) and aircraft spawn altitude"'),
+        "cheatspawnmenu_support": ('"Support"', '"whitesnoop/cheats/menu_support"', '"Ammo Boxes, Fast Mine Engineer, AT/AP Mines, Artillery, Mortar & Clear Cheated"'),
+        "cheatspawnmenu_infantry": ('"Infantry"', None, '"Spawn single soldiers or full infantry squads"'),
+        "cheatspawnmenu_vehicles": ('"Tanks & Vehicles"', None, '"Spawn BTRs, light, medium, or heavy tanks"'),
+        "cheatspawnmenu_artillery": ('"Artillery"', None, '"Spawn towed artillery & AT/AA guns"'),
+        "cheatspawnmenu_airplanes": ('"Aircraft"', None, '"Call in aircraft flyovers / air support"'),
+        "cheatspawnmenu_mod_vehicles": ('"Mod Units"', None, '"Spawn custom mod vehicles & infantry configured via *_list.txt"'),
+        "cheat_addmoney": ('"+1000 MP"', None, '"Add +1000 Manpower / Reinforcement Points (Skirmish & Singleplayer)"'),
+        "cheat_godmode_off": ('"God Mode"', None, '"Enable: make all your units and vehicles invulnerable"'),
+        "cheat_godmode_on": ('"God Mode"', None, '"Disable: turn off God Mode"'),
+        "cheat_infammo_off": ('"Infinite Ammo"', None, '"Enable: spawn a map-wide (500m) resupply aura refilling ammo & fuel"'),
+        "cheat_infammo_on": ('"Infinite Ammo"', None, '"Disable: remove map-wide resupply aura"'),
+        "cheat_fuel-stam-off": ('"Fuel & Stamina"', None, '"Enable: keep soldier stamina at 100% and vehicle fuel full"'),
+        "cheat_fuel-stam-on": ('"Fuel & Stamina"', None, '"Disable: turn off infinite fuel & stamina"'),
+        "cheat_aimrange_accuracy_on": ('"Range & Accuracy"', None, '"Enable: grant 3x weapon range and 5x accuracy to your units"'),
+        "cheat_aimrange_accuracy_off": ('"Range & Accuracy"', None, '"Disable: restore normal weapon range and accuracy"'),
+        "cheat_enemy": ('"Enemy Cheats"', None, '"Cheats below target enemy units on the map"'),
+        "cheatweakenemy": ('"Instakill"', None, '"Enable: reduce enemy soldier HP to 1 and enemy vehicle armor to 1%"'),
+        "cheatweakenemyoff": ('"Instakill"', None, '"Disable: restore normal enemy HP and armor"'),
+        "cheat_addexp": ('"Max Veterancy"', '"whitesnoop/cheats/veterancy"', '"One-shot: promote all currently alive friendly infantry, gun crews, and vehicle crews to Level 8"'),
+        "cheat_conquest_win": ('"Instant Win"', '"whitesnoop/cheats/win"', '"Immediately win the current Conquest battle with full victory rewards"'),
+        "cheat_repair": ('"Repair Vehicles"', '"whitesnoop/cheats/repair"', '"Instantly repair hull, turret, gun, engine, tracks & wheels on all your vehicles"'),
+        "cheat_destroyarmor": ('"Break Enemy Armor"', '"whitesnoop/cheats/destroyarmor"', '"Break gun, turret, engine & tracks on all enemy vehicles on the map"'),
+        "cheat_explosion": ('"Explosion"', None, '"Click on the ground to trigger an explosion at cursor"'),
+        "cheat_artillery": ('"Artillery Barrage"', None, '"Click on the ground to call an artillery barrage at cursor"'),
+        "cheat_mortar": ('"Mortar Barrage"', None, '"Click on the ground to call a mortar barrage at cursor"'),
+        "cheat_miner": ('"Fast Mine Engineer"', '"whitesnoop/cheats/fastminer"', '"Click on ground to spawn Engineer with 40 AT + 40 AP instant (0.1s) mines. Hold Shift to queue!"'),
+        "cheat_mine": ('"AT Mines (x8)"', None, '"Click on the ground to drop 8 armed Anti-Tank mines"'),
+        "cheat_mine_ap": ('"AP Mines (x8)"', None, '"Click on the ground to drop 8 armed Anti-Personnel mines"'),
+        "cheat_ammo": ('"Ammo Box"', None, '"Click on ground to deploy an FPS-friendly resupply crate (all factions + MACE)"'),
+        "cheat_ammodrop": ('"Paradrop Ammo"', None, '"Click on the ground to paradrop a supply crate at cursor"'),
+        "cheat_delete": ('"Clear Cheated"', None, '"Delete all units & objects spawned by CheatsMod from the map"'),
+        "cheat_return": ('"Back"', None, '"Return to previous menu"'),
+        "changecn_user": ('"Side: Ally"', None, '"Spawning units for your own team (click to switch to Enemy AI)"'),
+        "changecn_ai": ('"Side: Enemy AI"', None, '"Spawning units for Enemy AI (click to switch to Ally)"'),
+        "cheat_options-planeheight1": ('"Plane Height: 15m"', None, '"Aircraft spawn altitude: 15m (click to cycle 15m / 20m / 25m)"'),
+        "cheat_options-planeheight2": ('"Plane Height: 20m"', None, '"Aircraft spawn altitude: 20m (click to cycle 15m / 20m / 25m)"'),
+        "cheat_options-planeheight3": ('"Plane Height: 25m"', None, '"Aircraft spawn altitude: 25m (click to cycle 15m / 20m / 25m)"'),
+        "cheat_air1": ('"[Ger] Bf 109 G-6"', None, '"Click on ground to spawn a German Bf 109 G-6 aircraft"'),
+        "cheat_air2": ('"[Ger] Bf 110 E-2"', None, '"Click on ground to spawn a German Bf 110 E-2 aircraft"'),
+        "cheat_air3": ('"[Ger] Fi 156"', None, '"Click on ground to spawn a German Fi 156 recon plane"'),
+        "cheat_air4": ('"[Rus] Yak-1"', None, '"Click on ground to spawn a Soviet Yak-1 aircraft"'),
+        "cheat_air5": ('"[Rus] IL-2"', None, '"Click on ground to spawn a Soviet IL-2 attack aircraft"'),
+        "cheat_air6": ('"[Rus] Po-2"', None, '"Click on ground to spawn a Soviet Po-2 biplane"'),
+        "cheat_air7": ('"[Usa] P-47D-22"', None, '"Click on ground to spawn a US P-47D-22 aircraft"'),
+        "cheat_air8": ('"[Eng] Blenheim Mk.I"', None, '"Click on ground to spawn a British Blenheim Mk.I bomber"'),
+        "changecountry_ger": ('""', None, '"Switch spawn roster to Germany"'),
+        "changecountry_usa": ('""', None, '"Switch spawn roster to USA"'),
+        "changecountry_uk": ('""', None, '"Switch spawn roster to Finland / Commonwealth"'),
+        "changecountry_rus": ('""', None, '"Switch spawn roster to USSR"'),
+        "changecountry_jap": ('""', None, '"Switch spawn roster to Other / Special"'),
+    }
+    for btn_id, (new_text, new_img, new_hint) in button_updates.items():
+        bpat = re.compile(
+            r'(\t\t\t\{"' + re.escape(btn_id) + r'"\n\t\t\t\t\{state hidden\}\n)\t\t\t\t\{text [^\n]+\}\n(\t\t\t\t\{image [^\n]+\}\n)\t\t\t\t\{hint [^\n]+\}\n'
+        )
+        m = bpat.search(txt)
+        if m:
+            img_line = f'\t\t\t\t{{image {new_img}}}\n' if new_img else m.group(2)
+            rep = f'{m.group(1)}\t\t\t\t{{text {new_text}}}\n{img_line}\t\t\t\t{{hint {new_hint}}}\n'
+            txt = txt[:m.start()] + rep + txt[m.end():]
 
     # 5. Show & hide cheat_miner in Support menu (20:supportcheats)
     if "{name cheat_miner}" not in txt:
@@ -1060,11 +1138,11 @@ def patch_mi_content(raw_txt, label):
     if old_aim_show in txt:
         txt = txt.replace(old_aim_show, new_aim_show, 1)
 
-    # 7. Initialize cheat_options-player$ = 0 in cheats/set/vars
+    # 7. Initialize cheat_options-player$ = 0 and explicitly reset one-shot events in cheats/set/vars
     if '{var "cheat_options-player$"}' not in txt[:16000]:
         txt = txt.replace(
             '\t\t\t\t\t{"set_i"\n\t\t\t\t\t\t{var "cheat_infammo$"}\n\t\t\t\t\t\t{op "="}\n\t\t\t\t\t\t{value 0}\n\t\t\t\t\t}',
-            '\t\t\t\t\t{"set_i"\n\t\t\t\t\t\t{var "cheat_infammo$"}\n\t\t\t\t\t\t{op "="}\n\t\t\t\t\t\t{value 0}\n\t\t\t\t\t}\n\t\t\t\t\t{"set_i"\n\t\t\t\t\t\t{var "cheat_options-player$"}\n\t\t\t\t\t\t{op "="}\n\t\t\t\t\t\t{value 0}\n\t\t\t\t\t}',
+            '\t\t\t\t\t{"set_i"\n\t\t\t\t\t\t{var "cheat_infammo$"}\n\t\t\t\t\t\t{op "="}\n\t\t\t\t\t\t{value 0}\n\t\t\t\t\t}\n\t\t\t\t\t{"set_i"\n\t\t\t\t\t\t{var "cheat_options-player$"}\n\t\t\t\t\t\t{op "="}\n\t\t\t\t\t\t{value 0}\n\t\t\t\t\t}\n\t\t\t\t\t{"event"\n\t\t\t\t\t\t{event "cheats/addexp"}\n\t\t\t\t\t\t{mode reset}\n\t\t\t\t\t\t{delay 0}\n\t\t\t\t\t}\n\t\t\t\t\t{"event"\n\t\t\t\t\t\t{event "cheats/conquest_win"}\n\t\t\t\t\t\t{mode reset}\n\t\t\t\t\t\t{delay 0}\n\t\t\t\t\t}\n\t\t\t\t\t{"event"\n\t\t\t\t\t\t{event "cheat_repair"}\n\t\t\t\t\t\t{mode reset}\n\t\t\t\t\t\t{delay 0}\n\t\t\t\t\t}\n\t\t\t\t\t{"event"\n\t\t\t\t\t\t{event "cheats/destroyarmor"}\n\t\t\t\t\t\t{mode reset}\n\t\t\t\t\t\t{delay 0}\n\t\t\t\t\t}\n\t\t\t\t\t{"event"\n\t\t\t\t\t\t{event "cheats/fast_miner"}\n\t\t\t\t\t\t{mode reset}\n\t\t\t\t\t\t{delay 0}\n\t\t\t\t\t}',
             1,
         )
 
@@ -1078,14 +1156,33 @@ def patch_mi_content(raw_txt, label):
     txt, ok3 = replace_trigger_block(txt, '{"cheats/active/aimrange"', make_aimrange_trigger())
 
     # 9. Upgrade cheats/units/mine and cheats/units/mine_ap to spawn 8 armed mines per click
-    # Fix cheat_mine and cheat_mine_ap buttons to use eventEnd (fires AFTER placing waypoint 30001 on the ground!)
+    # Fix waypoint buttons to use eventEnd (fires AFTER placing waypoint 30001 on the ground!)
+    for ev_name in ("cheats/mine", "cheats/mine_ap", "cheats/ammo", "cheats/artillery", "cheats/mortar"):
+        txt = txt.replace(
+            f'\t\t\t\t{{eventStart "{ev_name}"}}\n\t\t\t\t{{waypoint "30001"}}',
+            f'\t\t\t\t{{eventStart "cheat_click"}}\n\t\t\t\t{{eventEnd "{ev_name}"}}\n\t\t\t\t{{waypoint "30001"}}',
+        )
     txt = txt.replace(
-        '\t\t\t\t{eventStart "cheats/mine"}\n\t\t\t\t{waypoint "30001"}',
-        '\t\t\t\t{eventStart "cheat_click"}\n\t\t\t\t{eventEnd "cheats/mine"}\n\t\t\t\t{waypoint "30001"}',
+        '\t\t\t\t{eventStart "cheats/destroyarmor"}\n',
+        '\t\t\t\t{eventStart "cheat_click"}\n\t\t\t\t{eventEnd "cheats/destroyarmor"}\n',
     )
-    txt = txt.replace(
-        '\t\t\t\t{eventStart "cheats/mine_ap"}\n\t\t\t\t{waypoint "30001"}',
-        '\t\t\t\t{eventStart "cheat_click"}\n\t\t\t\t{eventEnd "cheats/mine_ap"}\n\t\t\t\t{waypoint "30001"}',
+
+    # Quote any unquoted hyphenated tags in selectors so GEM2 SDL parser never logs Unread data
+    txt = txt.replace('{tag cheat_infantry-ger1}', '{tag "cheat_infantry-ger1"}')
+    txt = txt.replace('{tag cheatsmod_inf-ammo}', '{tag "cheatsmod_inf-ammo"}')
+
+    # Split combined {state "dead inactive"} in excludes into two separate {state} checks across all triggers
+    txt = re.sub(
+        r'(\t+)\{state\n\1\t\{state "dead inactive"\}\n\1\}',
+        r'\1{state\n\1\t{state dead}\n\1}\n\1{state\n\1\t{state inactive}\n\1}',
+        txt,
+    )
+
+    # Ensure bare {selector {player "X"}} in actor_state/entity_state excludes dead & inactive actors
+    txt = re.sub(
+        r'(\t+)\{selector\n\1\t\{player "(\d)"\}\n\1\}',
+        r'\1{selector\n\1\t{source advanced}\n\1\t{ignore_captured_by_user 0}\n\1\t{group\n\1\t\t{select\n\1\t\t\t{player "\2"}\n\1\t\t}\n\1\t\t{exclude\n\1\t\t\t{state\n\1\t\t\t\t{state dead}\n\1\t\t\t}\n\1\t\t\t{state\n\1\t\t\t\t{state inactive}\n\1\t\t\t}\n\1\t\t}\n\1\t}\n\1}',
+        txt,
     )
 
     # Remove dead outdated_game_cheat hide calls that spam game.log
@@ -1212,7 +1309,7 @@ def patch_mi_content(raw_txt, label):
     # 11. Add {delay 1} to continuous triggers (godmodecheckon, weakenemy, fuel_on) so they don't run 60x/sec
     #     AND prepend {state user_control} blocks to godmodecheckon & fuel_on so they always work automatically!
     god_uc = '\t\t\t\t\t{"entity_state"\n\t\t\t\t\t\t{selector\n\t\t\t\t\t\t\t{source advanced}\n\t\t\t\t\t\t\t{ignore_captured_by_user 0}\n\t\t\t\t\t\t\t{group\n\t\t\t\t\t\t\t\t{select\n\t\t\t\t\t\t\t\t\t{state\n\t\t\t\t\t\t\t\t\t\t{state user_control}\n\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}\n\t\t\t\t\t\t{impregnability full}\n\t\t\t\t\t}\n'
-    fuel_uc = '\t\t\t\t\t{"actor_state"\n\t\t\t\t\t\t{selector\n\t\t\t\t\t\t\t{source advanced}\n\t\t\t\t\t\t\t{ignore_captured_by_user 0}\n\t\t\t\t\t\t\t{group\n\t\t\t\t\t\t\t\t{select\n\t\t\t\t\t\t\t\t\t{state\n\t\t\t\t\t\t\t\t\t\t{state user_control}\n\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}\n\t\t\t\t\t\t{human\n\t\t\t\t\t\t\t{stamina 100}\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t\t{"inventory"\n\t\t\t\t\t\t{selector\n\t\t\t\t\t\t\t{source advanced}\n\t\t\t\t\t\t\t{ignore_captured_by_user 0}\n\t\t\t\t\t\t\t{group\n\t\t\t\t\t\t\t\t{select\n\t\t\t\t\t\t\t\t\t{state\n\t\t\t\t\t\t\t\t\t\t{state user_control}\n\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}\n\t\t\t\t\t\t{action fuel}\n\t\t\t\t\t\t{amount 999}\n\t\t\t\t\t}\n'
+    fuel_uc = '\t\t\t\t\t{"actor_state"\n\t\t\t\t\t\t{selector\n\t\t\t\t\t\t\t{source advanced}\n\t\t\t\t\t\t\t{ignore_captured_by_user 0}\n\t\t\t\t\t\t\t{group\n\t\t\t\t\t\t\t\t{select\n\t\t\t\t\t\t\t\t\t{state\n\t\t\t\t\t\t\t\t\t\t{state user_control}\n\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t{exclude\n\t\t\t\t\t\t\t\t\t{state\n\t\t\t\t\t\t\t\t\t\t{state dead}\n\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t\t{state\n\t\t\t\t\t\t\t\t\t\t{state inactive}\n\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}\n\t\t\t\t\t\t{human\n\t\t\t\t\t\t\t{stamina 100}\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t\t{"inventory"\n\t\t\t\t\t\t{selector\n\t\t\t\t\t\t\t{source advanced}\n\t\t\t\t\t\t\t{ignore_captured_by_user 0}\n\t\t\t\t\t\t\t{group\n\t\t\t\t\t\t\t\t{select\n\t\t\t\t\t\t\t\t\t{state\n\t\t\t\t\t\t\t\t\t\t{state user_control}\n\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t{exclude\n\t\t\t\t\t\t\t\t\t{state\n\t\t\t\t\t\t\t\t\t\t{state dead}\n\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t\t{state\n\t\t\t\t\t\t\t\t\t\t{state inactive}\n\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}\n\t\t\t\t\t\t{action fuel}\n\t\t\t\t\t\t{amount 999}\n\t\t\t\t\t}\n'
     for trig, sec, extra in [
         ('{"cheats/active/godmodecheckon"', "1", god_uc),
         ('{"cheats/active/weakenemy"', "1", ""),

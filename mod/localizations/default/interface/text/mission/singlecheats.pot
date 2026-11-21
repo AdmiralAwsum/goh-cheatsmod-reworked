@@ -95,7 +95,7 @@ msgstr "Configure CheatsMod"
 	{"Aimrange" "Aimrange"}
 	{"Increase Aimrange + Accuracy" "Increase Aimrange + Accuracy"}
 	{"Disable" "Disable"}
-	{"Cheats below effects enemy" "Cheats below effects enemy"}
+	{"Cheats below effects enemy" "Cheats below target enemy units on the map"}
 	{"Instakill" "Instakill"}
 	{"Instant kill InfantryTanks" "Instant kill InfantryTanks"}
 	{"repair all tanks" "repair all tanks"}
@@ -120,8 +120,8 @@ Current Player: <e(shadow)><c(f2c200)>3</c></e>"}
 	{"Deploy Explosion" "Deploy Explosion"}
 	{"Artillery Barrage" "Artillery Barrage"}
 	{"Deploy mines" "AT Mines (x8)"}
-	{"Lay a mine field" "Spawn 8 armed Anti-Tank mines at cursor"}
-	{"Destroy enemy armor" "Destroy enemy armor"}
+	{"Lay a mine field" "Click on the ground to drop 8 armed Anti-Tank mines"}
+	{"Destroy enemy armor" "Break gun, turret, engine & tracks on all enemy vehicles"}
 	{"PzKpfw II Luchs" "PzKpfw II Luchs"}
 	{"SPG Hetzer" "SPG Hetzer"}
 	{"Marder III H" "Marder III H"}
@@ -181,18 +181,22 @@ Current Player: <e(shadow)><c(f2c200)>3</c></e>"}
 	{"Mk.VII Churchill" "Mk.VII Churchill"}
 	{"Achilles 1C" "Achilles 1C"}
 	{"Katyusha" "Katyusha"}
-	{"Support" "Support"}
+	{"Support" "Ammo Boxes, Fast Mine Engineer, AT/AP Mines, Artillery, Mortar & Cleanup"}
 	{"Previous menu" "Previous menu"}
 	{"Fast Miner" "Fast Mine Engineer"}
-	{"Fast Miner hint" "Spawn Engineer with 40 fast AT + 40 fast AP mines (Hold Shift to queue minefields!)"}
+	{"Fast Miner hint" "Click on ground to spawn Engineer with 40 AT + 40 AP instant (0.1s) mines. Hold Shift to queue!"}
 	{"Fast Miner" "Fast Mine Engineer"}
-	{"Fast Miner hint" "Spawn Engineer with 40 fast AT + 40 fast AP mines (Hold Shift to queue minefields!)"}
+	{"Fast Miner hint" "Click on ground to spawn Engineer with 40 AT + 40 AP instant (0.1s) mines. Hold Shift to queue!"}
 	{"Fast Miner" "Fast Mine Engineer"}
-	{"Fast Miner hint" "Spawn Engineer with 40 fast AT + 40 fast AP mines (Hold Shift to queue minefields!)"}
+	{"Fast Miner hint" "Click on ground to spawn Engineer with 40 AT + 40 AP instant (0.1s) mines. Hold Shift to queue!"}
 	{"Fast Miner" "Fast Mine Engineer"}
-	{"Fast Miner hint" "Spawn Engineer with 40 fast AT + 40 fast AP mines (Hold Shift to queue minefields!)"}
+	{"Fast Miner hint" "Click on ground to spawn Engineer with 40 AT + 40 AP instant (0.1s) mines. Hold Shift to queue!"}
 	{"Fast Miner" "Fast Mine Engineer"}
-	{"Fast Miner hint" "Spawn Engineer with 40 fast AT + 40 fast AP mines (Hold Shift to queue minefields!)"}
+	{"Fast Miner hint" "Click on ground to spawn Engineer with 40 AT + 40 AP instant (0.1s) mines. Hold Shift to queue!"}
 	{"Fast Miner" "Fast Mine Engineer"}
-	{"Fast Miner hint" "Spawn Engineer with 40 fast AT + 40 fast AP mines (Hold Shift to queue!)"}
+	{"Fast Miner hint" "Click on ground to spawn Engineer with 40 AT + 40 AP instant (0.1s) mines. Hold Shift to queue!"}
+	{"Set to player4" "Override Player 4 (All cheats already auto-target human units; click to cycle)"}
+	{"Set to player5" "Override Player 5 (All cheats already auto-target human units; click to cycle)"}
+	{"Set to player6" "Override Player 6 (All cheats already auto-target human units; click to cycle)"}
+	{"Set to player7" "Override Player 7 (All cheats already auto-target human units; click to cycle)"}
 }
