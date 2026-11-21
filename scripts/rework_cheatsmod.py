@@ -271,6 +271,33 @@ def rewrite_supply_and_entities():
 
 def make_addexp_trigger():
     blocks = []
+    # Always apply to all human-controlled units (Solo & Co-op) via {state user_control}
+    blocks.append("""\t\t\t\t\t{"actor_state"
+\t\t\t\t\t\t{selector
+\t\t\t\t\t\t\t{source advanced}
+\t\t\t\t\t\t\t{ignore_captured_by_user 0}
+\t\t\t\t\t\t\t{group
+\t\t\t\t\t\t\t\t{select
+\t\t\t\t\t\t\t\t\t{state
+\t\t\t\t\t\t\t\t\t\t{state user_control}
+\t\t\t\t\t\t\t\t\t}
+\t\t\t\t\t\t\t\t}
+\t\t\t\t\t\t\t\t{include
+\t\t\t\t\t\t\t\t\t{prop
+\t\t\t\t\t\t\t\t\t\t{prop human}
+\t\t\t\t\t\t\t\t\t}
+\t\t\t\t\t\t\t\t}
+\t\t\t\t\t\t\t\t{exclude
+\t\t\t\t\t\t\t\t\t{state
+\t\t\t\t\t\t\t\t\t\t{state "dead inactive"}
+\t\t\t\t\t\t\t\t\t}
+\t\t\t\t\t\t\t\t}
+\t\t\t\t\t\t\t}
+\t\t\t\t\t\t}
+\t\t\t\t\t\t{human
+\t\t\t\t\t\t\t{veterancy 8}
+\t\t\t\t\t\t}
+\t\t\t\t\t}""")
     for p in range(8):
         blocks.append(f"""\t\t\t\t\t{{"if"
 \t\t\t\t\t\t{{condition
@@ -286,9 +313,6 @@ def make_addexp_trigger():
 \t\t\t\t\t\t\t\t{{group
 \t\t\t\t\t\t\t\t\t{{select
 \t\t\t\t\t\t\t\t\t\t{{player "{p}"}}
-\t\t\t\t\t\t\t\t\t\t{{tag
-\t\t\t\t\t\t\t\t\t\t\t{{tag _user}}
-\t\t\t\t\t\t\t\t\t\t}}
 \t\t\t\t\t\t\t\t\t}}
 \t\t\t\t\t\t\t\t\t{{include
 \t\t\t\t\t\t\t\t\t\t{{prop
@@ -383,6 +407,35 @@ def make_auto_detect_player_trigger():
 def make_repair_trigger():
     comps = ["body", "turret", "gun", "engine", "trackleft", "trackright", "wheel", "shield", "mantlet", "cabin"]
     blocks = []
+    # Always repair all human-controlled vehicles (Solo & Co-op) via {state user_control}
+    uc_cmds = []
+    for c in comps:
+        uc_cmds.append(f"""\t\t\t\t\t{{"actor_component"
+\t\t\t\t\t\t{{selector
+\t\t\t\t\t\t\t{{source advanced}}
+\t\t\t\t\t\t\t{{ignore_captured_by_user 0}}
+\t\t\t\t\t\t\t{{group
+\t\t\t\t\t\t\t\t{{select
+\t\t\t\t\t\t\t\t\t{{state
+\t\t\t\t\t\t\t\t\t\t{{state user_control}}
+\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t{{include
+\t\t\t\t\t\t\t\t\t{{prop
+\t\t\t\t\t\t\t\t\t\t{{prop vehicle}}
+\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t{{exclude
+\t\t\t\t\t\t\t\t\t{{state
+\t\t\t\t\t\t\t\t\t\t{{state "dead inactive"}}
+\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t}}
+\t\t\t\t\t\t{{component {c}}}
+\t\t\t\t\t\t{{state work}}
+\t\t\t\t\t}}""")
+    blocks.append(chr(10).join(uc_cmds))
     for p in range(8):
         comp_cmds = []
         for c in comps:
@@ -507,7 +560,28 @@ def make_destroyarmor_trigger():
 
 
 def make_aimrange_trigger():
-    blocks = []
+    blocks = ["""\t\t\t\t\t{"entity_state"
+\t\t\t\t\t\t{selector
+\t\t\t\t\t\t\t{source advanced}
+\t\t\t\t\t\t\t{ignore_captured_by_user 0}
+\t\t\t\t\t\t\t{group
+\t\t\t\t\t\t\t\t{select
+\t\t\t\t\t\t\t\t\t{state
+\t\t\t\t\t\t\t\t\t\t{state user_control}
+\t\t\t\t\t\t\t\t\t}
+\t\t\t\t\t\t\t\t}
+\t\t\t\t\t\t\t\t{exclude
+\t\t\t\t\t\t\t\t\t{tag
+\t\t\t\t\t\t\t\t\t\t{tag cheat_aimrange}
+\t\t\t\t\t\t\t\t\t}
+\t\t\t\t\t\t\t\t\t{state
+\t\t\t\t\t\t\t\t\t\t{state "dead inactive"}
+\t\t\t\t\t\t\t\t\t}
+\t\t\t\t\t\t\t\t}
+\t\t\t\t\t\t\t}
+\t\t\t\t\t\t}
+\t\t\t\t\t\t{tag_add cheat_aimrange}
+\t\t\t\t\t}"""]
     for p in range(8):
         blocks.append(f"""\t\t\t\t\t{{"if"
 \t\t\t\t\t\t{{condition
@@ -788,8 +862,12 @@ def generate_custom_button_icons():
     with zipfile.ZipFile(iface_pak, "r") as zin, zipfile.ZipFile(tmp_pak, "w", compression=zipfile.ZIP_DEFLATED) as zout:
         base_plates = {}
         for state in ("00", "01", "02"):
-            raw = zin.read(f"interface/scene/unit_icon/whitesnoop/menus/menu_item_{state}.tga")
-            base_plates[state] = Image.open(io.BytesIO(raw)).convert("RGBA")
+            raw = zin.read(f"interface/scene/unit_icon/whitesnoop/cheats/disabled_{state}.tga")
+            plate = Image.open(io.BytesIO(raw)).convert("RGBA")
+            # Crop/fill out the top red status strip (y=0..8) with clean dark metallic border so it looks like a neutral action button
+            d_clean = ImageDraw.Draw(plate)
+            d_clean.rectangle([4, 2, 99, 8], fill=(55, 58, 52, 255))
+            base_plates[state] = plate
 
         generated_names = set()
         for icon_name, drawer in icon_drawers.items():
@@ -1131,16 +1209,19 @@ def patch_mi_content(raw_txt, label):
     if old_infammo_off in txt:
         txt = txt.replace(old_infammo_off, new_infammo_off, 1)
 
-    # 11. Add {delay 1} to continuous triggers (godmodecheckon, weakenemy, fuel_on) so they don't run 60x/sec!
-    for trig, sec in [
-        ('{"cheats/active/godmodecheckon"', "1"),
-        ('{"cheats/active/weakenemy"', "1"),
-        ('{"cheats/active/fuel_on"', "1.5"),
+    # 11. Add {delay 1} to continuous triggers (godmodecheckon, weakenemy, fuel_on) so they don't run 60x/sec
+    #     AND prepend {state user_control} blocks to godmodecheckon & fuel_on so they always work automatically!
+    god_uc = '\t\t\t\t\t{"entity_state"\n\t\t\t\t\t\t{selector\n\t\t\t\t\t\t\t{source advanced}\n\t\t\t\t\t\t\t{ignore_captured_by_user 0}\n\t\t\t\t\t\t\t{group\n\t\t\t\t\t\t\t\t{select\n\t\t\t\t\t\t\t\t\t{state\n\t\t\t\t\t\t\t\t\t\t{state user_control}\n\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}\n\t\t\t\t\t\t{impregnability full}\n\t\t\t\t\t}\n'
+    fuel_uc = '\t\t\t\t\t{"actor_state"\n\t\t\t\t\t\t{selector\n\t\t\t\t\t\t\t{source advanced}\n\t\t\t\t\t\t\t{ignore_captured_by_user 0}\n\t\t\t\t\t\t\t{group\n\t\t\t\t\t\t\t\t{select\n\t\t\t\t\t\t\t\t\t{state\n\t\t\t\t\t\t\t\t\t\t{state user_control}\n\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}\n\t\t\t\t\t\t{human\n\t\t\t\t\t\t\t{stamina 100}\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t\t{"inventory"\n\t\t\t\t\t\t{selector\n\t\t\t\t\t\t\t{source advanced}\n\t\t\t\t\t\t\t{ignore_captured_by_user 0}\n\t\t\t\t\t\t\t{group\n\t\t\t\t\t\t\t\t{select\n\t\t\t\t\t\t\t\t\t{state\n\t\t\t\t\t\t\t\t\t\t{state user_control}\n\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}\n\t\t\t\t\t\t{action fuel}\n\t\t\t\t\t\t{amount 999}\n\t\t\t\t\t}\n'
+    for trig, sec, extra in [
+        ('{"cheats/active/godmodecheckon"', "1", god_uc),
+        ('{"cheats/active/weakenemy"', "1", ""),
+        ('{"cheats/active/fuel_on"', "1.5", fuel_uc),
     ]:
         pat = re.escape(trig) + r'(\n\t\t\t\t\{condition.*?\{actions\n)'
         m = re.search(pat, txt, re.S)
         if m and '{"delay"' not in txt[m.end() : m.end() + 60]:
-            txt = txt[: m.end()] + f'\t\t\t\t\t{{"delay"\n\t\t\t\t\t\t{{time {sec}}}\n\t\t\t\t\t}}\n' + txt[m.end() :]
+            txt = txt[: m.end()] + f'\t\t\t\t\t{{"delay"\n\t\t\t\t\t\t{{time {sec}}}\n\t\t\t\t\t}}\n' + extra + txt[m.end() :]
 
     # Verify zero Chinese characters remain
     cn_left = re.findall(r"[\u4e00-\u9fff]+", txt)
