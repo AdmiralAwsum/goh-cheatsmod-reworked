@@ -255,33 +255,65 @@ def rewrite_supply_and_entities():
 
 def make_addexp_trigger():
     blocks = []
-    # Always apply to all human-controlled units (Solo & Co-op) via {state user_control}
-    blocks.append("""\t\t\t\t\t{"actor_state"
-\t\t\t\t\t\t{selector
-\t\t\t\t\t\t\t{source advanced}
-\t\t\t\t\t\t\t{ignore_captured_by_user 0}
-\t\t\t\t\t\t\t{group
-\t\t\t\t\t\t\t\t{select
-\t\t\t\t\t\t\t\t\t{state
-\t\t\t\t\t\t\t\t\t\t{state user_control}
-\t\t\t\t\t\t\t\t\t}
-\t\t\t\t\t\t\t\t}
-\t\t\t\t\t\t\t\t{include
-\t\t\t\t\t\t\t\t\t{prop
-\t\t\t\t\t\t\t\t\t\t{prop human}
-\t\t\t\t\t\t\t\t\t}
-\t\t\t\t\t\t\t\t}
-\t\t\t\t\t\t\t\t{exclude
-\t\t\t\t\t\t\t\t\t{state
-\t\t\t\t\t\t\t\t\t\t{state "dead inactive"}
-\t\t\t\t\t\t\t\t\t}
-\t\t\t\t\t\t\t\t}
-\t\t\t\t\t\t\t}
-\t\t\t\t\t\t}
-\t\t\t\t\t\t{human
-\t\t\t\t\t\t\t{veterancy 8}
-\t\t\t\t\t\t}
-\t\t\t\t\t}""")
+    # 1. Promote ALL human-controlled players' infantry AND linked vehicle/gun crews (Solo & Co-op!)
+    # Check which player slots (0..7) own any user_control unit (infantry or vehicle), then promote all {prop human}
+    # owned by that player (excluding dead and hidden templates, keeping linked/seated vehicle crews!).
+    for p in range(8):
+        blocks.append(f"""\t\t\t\t\t{{"if"
+\t\t\t\t\t\t{{condition
+\t\t\t\t\t\t\t{{type entities}}
+\t\t\t\t\t\t\t{{selector
+\t\t\t\t\t\t\t\t{{source advanced}}
+\t\t\t\t\t\t\t\t{{ignore_captured_by_user 0}}
+\t\t\t\t\t\t\t\t{{group
+\t\t\t\t\t\t\t\t\t{{select
+\t\t\t\t\t\t\t\t\t\t{{player "{p}"}}
+\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t\t{{include
+\t\t\t\t\t\t\t\t\t\t{{state
+\t\t\t\t\t\t\t\t\t\t\t{{state user_control}}
+\t\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t\t{{exclude
+\t\t\t\t\t\t\t\t\t\t{{state
+\t\t\t\t\t\t\t\t\t\t\t{{state dead}}
+\t\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t\t\t{{tag
+\t\t\t\t\t\t\t\t\t\t\t{{tag hidden}}
+\t\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t}}
+\t\t\t\t\t\t{{"actor_state"
+\t\t\t\t\t\t\t{{selector
+\t\t\t\t\t\t\t\t{{source advanced}}
+\t\t\t\t\t\t\t\t{{ignore_captured_by_user 0}}
+\t\t\t\t\t\t\t\t{{group
+\t\t\t\t\t\t\t\t\t{{select
+\t\t\t\t\t\t\t\t\t\t{{player "{p}"}}
+\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t\t{{include
+\t\t\t\t\t\t\t\t\t\t{{prop
+\t\t\t\t\t\t\t\t\t\t\t{{prop human}}
+\t\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t\t{{exclude
+\t\t\t\t\t\t\t\t\t\t{{state
+\t\t\t\t\t\t\t\t\t\t\t{{state dead}}
+\t\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t\t\t{{tag
+\t\t\t\t\t\t\t\t\t\t\t{{tag hidden}}
+\t\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t{{human
+\t\t\t\t\t\t\t\t{{veterancy 8}}
+\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t}}
+\t\t\t\t\t}}""")
+    # 2. Also honor manual cheat_options-player$ override
     for p in range(8):
         blocks.append(f"""\t\t\t\t\t{{"if"
 \t\t\t\t\t\t{{condition
@@ -305,7 +337,10 @@ def make_addexp_trigger():
 \t\t\t\t\t\t\t\t\t}}
 \t\t\t\t\t\t\t\t\t{{exclude
 \t\t\t\t\t\t\t\t\t\t{{state
-\t\t\t\t\t\t\t\t\t\t\t{{state "dead inactive"}}
+\t\t\t\t\t\t\t\t\t\t\t{{state dead}}
+\t\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t\t\t{{tag
+\t\t\t\t\t\t\t\t\t\t\t{{tag hidden}}
 \t\t\t\t\t\t\t\t\t\t}}
 \t\t\t\t\t\t\t\t\t}}
 \t\t\t\t\t\t\t\t}}
@@ -342,7 +377,7 @@ def make_addexp_trigger():
 
 
 def make_auto_detect_player_trigger():
-    """Auto-detects the actual human player slot (0-7) using {select {player}} AND {state user_control}."""
+    """Polls every 2s until at least one human player unit (user_control) spawns, then sets cheat_options-player$."""
     user_checks = []
     # Check 7..2, then 0, then 1 so Player 1 (Conquest/MP) or Player 0 (SP) wins cleanly
     for p in [7, 6, 5, 4, 3, 2, 0, 1]:
@@ -363,7 +398,10 @@ def make_auto_detect_player_trigger():
 \t\t\t\t\t\t\t\t\t}}
 \t\t\t\t\t\t\t\t\t{{exclude
 \t\t\t\t\t\t\t\t\t\t{{state
-\t\t\t\t\t\t\t\t\t\t\t{{state "dead inactive"}}
+\t\t\t\t\t\t\t\t\t\t\t{{state dead}}
+\t\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t\t\t{{state
+\t\t\t\t\t\t\t\t\t\t\t{{state inactive}}
 \t\t\t\t\t\t\t\t\t\t}}
 \t\t\t\t\t\t\t\t\t}}
 \t\t\t\t\t\t\t\t}}
@@ -374,19 +412,30 @@ def make_auto_detect_player_trigger():
 \t\t\t\t\t\t\t{{op "="}}
 \t\t\t\t\t\t\t{{value {p}}}
 \t\t\t\t\t\t}}
+\t\t\t\t\t\t{{"set_i"
+\t\t\t\t\t\t\t{{var "cheat_player_detected$"}}
+\t\t\t\t\t\t\t{{op "="}}
+\t\t\t\t\t\t\t{{value 1}}
+\t\t\t\t\t\t}}
 \t\t\t\t\t}}""")
     return f"""\t\t\t{{"cheats/auto_detect_player"
 \t\t\t\t{{condition
+\t\t\t\t\t{{terms
+\t\t\t\t\t\t{{"1.cmp_i"
+\t\t\t\t\t\t\t{{var "cheat_player_detected$"}}
+\t\t\t\t\t\t\t{{op "=="}}
+\t\t\t\t\t\t\t{{value 0}}
+\t\t\t\t\t\t}}
+\t\t\t\t\t}}
 \t\t\t\t}}
 \t\t\t\t{{actions
 \t\t\t\t\t{{"delay"
 \t\t\t\t\t\t{{time 2}}
 \t\t\t\t\t}}
 {chr(10).join(user_checks)}
-\t\t\t\t\t{{"delay"
-\t\t\t\t\t\t{{time 4}}
+\t\t\t\t\t{{"trigger"
+\t\t\t\t\t\t{{name "cheats/auto_detect_player"}}
 \t\t\t\t\t}}
-{chr(10).join(user_checks)}
 \t\t\t\t}}
 \t\t\t}}"""
 
@@ -888,9 +937,21 @@ def generate_custom_button_icons():
         for state in ("00", "01", "02"):
             raw = zin.read(f"interface/scene/unit_icon/whitesnoop/cheats/disabled_{state}.tga")
             plate = Image.open(io.BytesIO(raw)).convert("RGBA")
-            # Crop/fill out the top red status strip (y=0..8) with clean dark metallic border so it looks like a neutral action button
+            # Build a 100% clean neutral metallic plate (no "Deactive" text or red status strip)
             d_clean = ImageDraw.Draw(plate)
-            d_clean.rectangle([4, 2, 99, 8], fill=(55, 58, 52, 255))
+            w, h = plate.size
+            base_shade = {"00": (74, 71, 66), "01": (96, 92, 85), "02": (60, 58, 54)}[state]
+            for yy in range(3, h - 3):
+                # Slight vertical gradient matching unit_icon button style
+                t = yy / float(h)
+                r = int(base_shade[0] * (1.12 - 0.22 * t))
+                g = int(base_shade[1] * (1.12 - 0.22 * t))
+                b = int(base_shade[2] * (1.12 - 0.22 * t))
+                d_clean.line([(3, yy), (w - 4, yy)], fill=(r, g, b, 235))
+            # Subtle inner highlight + dark border
+            d_clean.rectangle([3, 3, w - 4, h - 4], outline=(42, 40, 36, 255))
+            d_clean.line([(4, 4), (w - 5, 4)], fill=(135, 130, 122, 220))
+            d_clean.line([(4, 17), (w - 5, 17)], fill=(48, 46, 42, 180))
             base_plates[state] = plate
 
         generated_names = set()
@@ -934,7 +995,9 @@ def patch_mi_content(raw_txt, label):
     for old, new in cn_replacements:
         txt = txt.replace(old, new)
 
-    # 2. Register new events "cheats/fast_miner" and "cheats/conquest_win"
+    # 2. Register new events & vars ("cheats/fast_miner", "cheats/conquest_win", "cheat_player_detected")
+    if '{"cheat_player_detected"}' not in txt:
+        txt = txt.replace('{"cheat_options-player"}', '{"cheat_options-player"}\n\t\t\t{"cheat_player_detected"}', 1)
     if '{event "cheats/fast_miner"}' not in txt:
         txt = txt.replace('{event "cheat_delete"}', '{event "cheat_delete"}\n\t\t{event "cheats/fast_miner"}\n\t\t{event "cheats/conquest_win"}', 1)
 
@@ -1106,7 +1169,7 @@ def patch_mi_content(raw_txt, label):
     if '{var "cheat_options-player$"}' not in txt[:16000]:
         txt = txt.replace(
             '\t\t\t\t\t{"set_i"\n\t\t\t\t\t\t{var "cheat_infammo$"}\n\t\t\t\t\t\t{op "="}\n\t\t\t\t\t\t{value 0}\n\t\t\t\t\t}',
-            '\t\t\t\t\t{"set_i"\n\t\t\t\t\t\t{var "cheat_infammo$"}\n\t\t\t\t\t\t{op "="}\n\t\t\t\t\t\t{value 0}\n\t\t\t\t\t}\n\t\t\t\t\t{"set_i"\n\t\t\t\t\t\t{var "cheat_options-player$"}\n\t\t\t\t\t\t{op "="}\n\t\t\t\t\t\t{value 0}\n\t\t\t\t\t}\n\t\t\t\t\t{"event"\n\t\t\t\t\t\t{event "cheats/addexp"}\n\t\t\t\t\t\t{mode reset}\n\t\t\t\t\t\t{delay 0}\n\t\t\t\t\t}\n\t\t\t\t\t{"event"\n\t\t\t\t\t\t{event "cheats/conquest_win"}\n\t\t\t\t\t\t{mode reset}\n\t\t\t\t\t\t{delay 0}\n\t\t\t\t\t}\n\t\t\t\t\t{"event"\n\t\t\t\t\t\t{event "cheat_repair"}\n\t\t\t\t\t\t{mode reset}\n\t\t\t\t\t\t{delay 0}\n\t\t\t\t\t}\n\t\t\t\t\t{"event"\n\t\t\t\t\t\t{event "cheats/destroyarmor"}\n\t\t\t\t\t\t{mode reset}\n\t\t\t\t\t\t{delay 0}\n\t\t\t\t\t}\n\t\t\t\t\t{"event"\n\t\t\t\t\t\t{event "cheats/fast_miner"}\n\t\t\t\t\t\t{mode reset}\n\t\t\t\t\t\t{delay 0}\n\t\t\t\t\t}',
+            '\t\t\t\t\t{"set_i"\n\t\t\t\t\t\t{var "cheat_infammo$"}\n\t\t\t\t\t\t{op "="}\n\t\t\t\t\t\t{value 0}\n\t\t\t\t\t}\n\t\t\t\t\t{"set_i"\n\t\t\t\t\t\t{var "cheat_options-player$"}\n\t\t\t\t\t\t{op "="}\n\t\t\t\t\t\t{value 0}\n\t\t\t\t\t}\n\t\t\t\t\t{"set_i"\n\t\t\t\t\t\t{var "cheat_player_detected$"}\n\t\t\t\t\t\t{op "="}\n\t\t\t\t\t\t{value 0}\n\t\t\t\t\t}\n\t\t\t\t\t{"event"\n\t\t\t\t\t\t{event "cheats/addexp"}\n\t\t\t\t\t\t{mode reset}\n\t\t\t\t\t\t{delay 0}\n\t\t\t\t\t}\n\t\t\t\t\t{"event"\n\t\t\t\t\t\t{event "cheats/conquest_win"}\n\t\t\t\t\t\t{mode reset}\n\t\t\t\t\t\t{delay 0}\n\t\t\t\t\t}\n\t\t\t\t\t{"event"\n\t\t\t\t\t\t{event "cheat_repair"}\n\t\t\t\t\t\t{mode reset}\n\t\t\t\t\t\t{delay 0}\n\t\t\t\t\t}\n\t\t\t\t\t{"event"\n\t\t\t\t\t\t{event "cheats/destroyarmor"}\n\t\t\t\t\t\t{mode reset}\n\t\t\t\t\t\t{delay 0}\n\t\t\t\t\t}\n\t\t\t\t\t{"event"\n\t\t\t\t\t\t{event "cheats/fast_miner"}\n\t\t\t\t\t\t{mode reset}\n\t\t\t\t\t\t{delay 0}\n\t\t\t\t\t}',
             1,
         )
 
