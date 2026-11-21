@@ -100,29 +100,15 @@ def rewrite_localization():
 
 
 def rewrite_supply_and_entities():
-    # 1. Clean lightweight MACE-compatible cheat_supply.inc (no FPS kill!)
+    # 1. Universal cheat_supply.inc using supply_ammo(0) from whichever resupply.inc is loaded
+    # (works on Vanilla, MACE, Valour, etc. without crashing on MACE-only items_light_jap!)
     supply_inc = """(include "/properties/resupply.inc")
 
 (define "cheat_supply_ammo"
+\t("supply_ammo" supply(0))
 \t{extender "supply_zone"
 \t\t{fuel \t{amount 5}\t{value 1}}
 \t\t{resupply
-\t\t\t("items_light_generic")
-\t\t\t("items_light_ger")
-\t\t\t("items_light_rus")
-\t\t\t("items_light_eng")
-\t\t\t("items_light_usa")
-\t\t\t("items_light_fin")
-\t\t\t("items_light_jap")
-\t\t\t("items_light_fra")
-\t\t\t("items_heavy_generic")
-\t\t\t("items_heavy_ger")
-\t\t\t("items_heavy_rus")
-\t\t\t("items_heavy_eng")
-\t\t\t("items_heavy_fin")
-\t\t\t("items_heavy_usa")
-\t\t\t("items_heavy_jap")
-\t\t\t("items_heavy_fra")
 \t\t\t("items_explosives")
 \t\t\t("items_engineer")
 \t\t\t("items_medic")
@@ -132,35 +118,13 @@ def rewrite_supply_and_entities():
 \t\t{regenerationPeriod 0}
 \t\t{limit\t\t\t\t0}
 \t}
-\t{DecalView supply_zone
-\t\t{Sprite "supply_zone.ebm"
-\t\t\t{Visibility 0.25}
-\t\t}
-\t\t{Layer grounddynamic}
-\t\t{Visible 0}
-\t}
 )
 
 (define "cheat_supply_ammo_global"
+\t("supply_ammo" supply(0))
 \t{extender "supply_zone"
 \t\t{fuel \t{amount 10}\t{value 1}}
 \t\t{resupply
-\t\t\t("items_light_generic")
-\t\t\t("items_light_ger")
-\t\t\t("items_light_rus")
-\t\t\t("items_light_eng")
-\t\t\t("items_light_usa")
-\t\t\t("items_light_fin")
-\t\t\t("items_light_jap")
-\t\t\t("items_light_fra")
-\t\t\t("items_heavy_generic")
-\t\t\t("items_heavy_ger")
-\t\t\t("items_heavy_rus")
-\t\t\t("items_heavy_eng")
-\t\t\t("items_heavy_fin")
-\t\t\t("items_heavy_usa")
-\t\t\t("items_heavy_jap")
-\t\t\t("items_heavy_fra")
 \t\t\t("items_medic")
 \t\t}
 \t\t{radius\t\t\t\t500}
