@@ -1,10 +1,12 @@
 import io
+import math
 import os
 import re
 import zipfile
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageEnhance, ImageFilter
 
 MOD = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "mod")
+GOH_DIR = os.environ.get("GOH_DIR", r"D:\SteamLibrary\steamapps\common\Call to Arms - Gates of Hell")
 
 
 def remove_chinese_docs():
@@ -602,28 +604,60 @@ def make_destroyarmor_trigger():
 
 
 def make_aimrange_trigger():
-    blocks = ["""\t\t\t\t\t{"entity_state"
-\t\t\t\t\t\t{selector
-\t\t\t\t\t\t\t{source advanced}
-\t\t\t\t\t\t\t{ignore_captured_by_user 0}
-\t\t\t\t\t\t\t{group
-\t\t\t\t\t\t\t\t{select
-\t\t\t\t\t\t\t\t\t{state
-\t\t\t\t\t\t\t\t\t\t{state user_control}
-\t\t\t\t\t\t\t\t\t}
-\t\t\t\t\t\t\t\t}
-\t\t\t\t\t\t\t\t{exclude
-\t\t\t\t\t\t\t\t\t{tag
-\t\t\t\t\t\t\t\t\t\t{tag cheat_aimrange}
-\t\t\t\t\t\t\t\t\t}
-\t\t\t\t\t\t\t\t\t{state
-\t\t\t\t\t\t\t\t\t\t{state "dead inactive"}
-\t\t\t\t\t\t\t\t\t}
-\t\t\t\t\t\t\t\t}
-\t\t\t\t\t\t\t}
-\t\t\t\t\t\t}
-\t\t\t\t\t\t{tag_add cheat_aimrange}
-\t\t\t\t\t}"""]
+    # Match addexp's dual targeting: every player owning active user_control units (Solo & Co-op)
+    # PLUS manual cheat_options-player$ override. Exclude dead/hidden (keep manned/linked units!).
+    blocks = []
+    for p in range(8):
+        blocks.append(f"""\t\t\t\t\t{{"if"
+\t\t\t\t\t\t{{condition
+\t\t\t\t\t\t\t{{type entities}}
+\t\t\t\t\t\t\t{{selector
+\t\t\t\t\t\t\t\t{{source advanced}}
+\t\t\t\t\t\t\t\t{{ignore_captured_by_user 0}}
+\t\t\t\t\t\t\t\t{{group
+\t\t\t\t\t\t\t\t\t{{select
+\t\t\t\t\t\t\t\t\t\t{{player "{p}"}}
+\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t\t{{include
+\t\t\t\t\t\t\t\t\t\t{{state
+\t\t\t\t\t\t\t\t\t\t\t{{state user_control}}
+\t\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t\t{{exclude
+\t\t\t\t\t\t\t\t\t\t{{state
+\t\t\t\t\t\t\t\t\t\t\t{{state dead}}
+\t\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t\t\t{{tag
+\t\t\t\t\t\t\t\t\t\t\t{{tag hidden}}
+\t\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t}}
+\t\t\t\t\t\t{{"entity_state"
+\t\t\t\t\t\t\t{{selector
+\t\t\t\t\t\t\t\t{{source advanced}}
+\t\t\t\t\t\t\t\t{{ignore_captured_by_user 0}}
+\t\t\t\t\t\t\t\t{{group
+\t\t\t\t\t\t\t\t\t{{select
+\t\t\t\t\t\t\t\t\t\t{{player "{p}"}}
+\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t\t{{exclude
+\t\t\t\t\t\t\t\t\t\t{{tag
+\t\t\t\t\t\t\t\t\t\t\t{{tag cheat_aimrange}}
+\t\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t\t\t{{state
+\t\t\t\t\t\t\t\t\t\t\t{{state dead}}
+\t\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t\t\t{{tag
+\t\t\t\t\t\t\t\t\t\t\t{{tag hidden}}
+\t\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t{{tag_add cheat_aimrange}}
+\t\t\t\t\t\t}}
+\t\t\t\t\t}}""")
     for p in range(8):
         blocks.append(f"""\t\t\t\t\t{{"if"
 \t\t\t\t\t\t{{condition
@@ -639,16 +673,16 @@ def make_aimrange_trigger():
 \t\t\t\t\t\t\t\t{{group
 \t\t\t\t\t\t\t\t\t{{select
 \t\t\t\t\t\t\t\t\t\t{{player "{p}"}}
-\t\t\t\t\t\t\t\t\t\t{{tag
-\t\t\t\t\t\t\t\t\t\t\t{{tag _user}}
-\t\t\t\t\t\t\t\t\t\t}}
 \t\t\t\t\t\t\t\t\t}}
 \t\t\t\t\t\t\t\t\t{{exclude
 \t\t\t\t\t\t\t\t\t\t{{tag
 \t\t\t\t\t\t\t\t\t\t\t{{tag cheat_aimrange}}
 \t\t\t\t\t\t\t\t\t\t}}
 \t\t\t\t\t\t\t\t\t\t{{state
-\t\t\t\t\t\t\t\t\t\t\t{{state "dead inactive"}}
+\t\t\t\t\t\t\t\t\t\t\t{{state dead}}
+\t\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t\t\t{{tag
+\t\t\t\t\t\t\t\t\t\t\t{{tag hidden}}
 \t\t\t\t\t\t\t\t\t\t}}
 \t\t\t\t\t\t\t\t\t}}
 \t\t\t\t\t\t\t\t}}
@@ -668,7 +702,7 @@ def make_aimrange_trigger():
 \t\t\t\t}}
 \t\t\t\t{{actions
 \t\t\t\t\t{{"delay"
-\t\t\t\t\t\t{{time 1.5}}
+\t\t\t\t\t\t{{time 1}}
 \t\t\t\t\t}}
 {chr(10).join(blocks)}
 \t\t\t\t\t{{"trigger"
@@ -676,6 +710,35 @@ def make_aimrange_trigger():
 \t\t\t\t\t}}
 \t\t\t\t}}
 \t\t\t}}"""
+
+
+def make_aimrange_off_trigger():
+    return """\t\t\t{"cheats/active/aimrange_off"
+\t\t\t\t{condition
+\t\t\t\t\t{terms
+\t\t\t\t\t\t{"1.cmp_i"
+\t\t\t\t\t\t\t{var "cheat_aimrange$"}
+\t\t\t\t\t\t\t{op "!="}
+\t\t\t\t\t\t\t{value 1}
+\t\t\t\t\t\t}
+\t\t\t\t\t}
+\t\t\t\t}
+\t\t\t\t{actions
+\t\t\t\t\t{"delay"
+\t\t\t\t\t\t{time 0.5}
+\t\t\t\t\t}
+\t\t\t\t\t{"entity_state"
+\t\t\t\t\t\t{selector
+\t\t\t\t\t\t\t{ignore_captured_by_user 0}
+\t\t\t\t\t\t\t{tag cheat_aimrange}
+\t\t\t\t\t\t}
+\t\t\t\t\t\t{tag_remove cheat_aimrange}
+\t\t\t\t\t}
+\t\t\t\t\t{"trigger"
+\t\t\t\t\t\t{name "cheats/active/aimrange_off"}
+\t\t\t\t\t}
+\t\t\t\t}
+\t\t\t}"""
 
 
 def make_miner_trigger():
@@ -851,132 +914,197 @@ def replace_trigger_block(txt, trigger_header, new_block):
         if j > start_idx and depth <= 0:
             end_idx = j
             break
-    new_lines = lines[:start_idx] + new_block.splitlines() + lines[end_idx + 1 :]
+    repl = new_block.splitlines() if new_block else []
+    new_lines = lines[:start_idx] + repl + lines[end_idx + 1 :]
     return "\n".join(new_lines), True
 
 
 def generate_custom_button_icons():
-    """Generate crisp 104x52 3-state (_00, _01, _02) TGA icons in interface.pak using menu_item as the base plate."""
+    """Generate authentic 104x52 3-state (_00, _01, _02) TGA button icons in interface.pak from native game assets."""
     iface_pak = os.path.join(MOD, "resource", "interface.pak")
     tmp_pak = iface_pak + ".tmp"
+    goh_res_if = os.path.join(GOH_DIR, "resource", "interface")
 
-    def draw_star(draw, cx, cy, r_outer, r_inner, fill, outline):
-        import math
-        pts = []
-        for i in range(10):
-            ang = math.radians(-90 + i * 36)
-            r = r_outer if i % 2 == 0 else r_inner
-            pts.append((cx + r * math.cos(ang), cy + r * math.sin(ang)))
-        draw.polygon(pts, fill=fill, outline=outline)
+    def load_img(z, path):
+        return Image.open(io.BytesIO(z.read(path))).convert("RGBA")
 
-    def draw_repair(draw):
-        # Gold wrench on right side (x ~ 76, y ~ 26)
-        draw.line([(66, 36), (86, 16)], fill=(235, 195, 70, 255), width=5)
-        draw.ellipse([80, 10, 94, 24], fill=(235, 195, 70, 255), outline=(40, 30, 10, 255))
-        draw.polygon([(86, 16), (95, 11), (92, 20)], fill=(45, 45, 45, 255))
-        draw.ellipse([60, 31, 71, 42], fill=(235, 195, 70, 255), outline=(40, 30, 10, 255))
+    def build_clean_plate(zin, state, is_submenu=False):
+        s = load_img(zin, f"interface/scene/unit_icon/whitesnoop/infantry/single_{state}.tga")
+        m = load_img(zin, f"interface/scene/unit_icon/whitesnoop/cheats/money_{state}.tga")
+        mi = load_img(zin, f"interface/scene/unit_icon/whitesnoop/menus/menu_item_{state}.tga")
+        out = m.copy()
+        src_l = s.crop((6, 17, 34, 48))
+        src_r = s.crop((58, 17, 84, 48))
+        fill = Image.new("RGBA", (66, 31))
+        fill.paste(src_l, (0, 0))
+        fill.paste(src_r, (28, 0))
+        fill.paste(src_r.crop((0, 0, 12, 31)).transpose(Image.Transpose.FLIP_LEFT_RIGHT), (54, 0))
+        mask = Image.new("L", (66, 31), 255)
+        mp = mask.load()
+        for x in range(6):
+            a = int(255 * (0.5 - 0.5 * math.cos(math.pi * x / 6.0)))
+            for y in range(31):
+                mp[x, y] = a
+                mp[65 - x, y] = a
+        out.paste(fill, (18, 17), mask)
+        if is_submenu:
+            out.paste(mi.crop((85, 0, 104, 52)), (85, 0))
+        return out
 
-    def draw_destroyarmor(draw):
-        # Red target crosshair + X
-        draw.ellipse([66, 12, 92, 38], outline=(235, 70, 60, 255), width=3)
-        draw.line([(79, 8), (79, 42)], fill=(235, 70, 60, 255), width=2)
-        draw.line([(62, 25), (96, 25)], fill=(235, 70, 60, 255), width=2)
-        draw.ellipse([75, 21, 83, 29], fill=(255, 190, 60, 255))
+    def diff_cutout(target_im, bg_im, thresh=18):
+        t = target_im.copy()
+        w, h = t.size
+        tp = t.load()
+        bp = bg_im.load()
+        for y in range(h):
+            for x in range(w):
+                if x < 5 or x > 84 or y < 15 or y > 48:
+                    tp[x, y] = (0, 0, 0, 0)
+                    continue
+                r1, g1, b1, _ = tp[x, y]
+                r2, g2, b2, _ = bp[x, y]
+                diff = abs(r1 - r2) + abs(g1 - g2) + abs(b1 - b2)
+                a = 0 if diff < thresh else min(255, int((diff - thresh) * 5))
+                tp[x, y] = (r1, g1, b1, a)
+        bbox = t.getbbox()
+        return t.crop(bbox) if bbox else t
 
-    def draw_veterancy(draw):
-        # Bright gold star + double chevron
-        draw_star(draw, 79, 20, 11, 4.5, (255, 215, 65, 255), (60, 40, 10, 255))
-        draw.line([(69, 35), (79, 30), (89, 35)], fill=(255, 215, 65, 255), width=3)
-        draw.line([(69, 41), (79, 36), (89, 41)], fill=(255, 215, 65, 255), width=3)
+    def tint_rgba(im, rgb):
+        out = im.copy()
+        px = out.load()
+        for y in range(out.height):
+            for x in range(out.width):
+                r, g, b, a = px[x, y]
+                lum = (r * 0.3 + g * 0.59 + b * 0.11) / 255.0
+                px[x, y] = (
+                    min(255, int(rgb[0] * (0.4 + 0.6 * lum))),
+                    min(255, int(rgb[1] * (0.4 + 0.6 * lum))),
+                    min(255, int(rgb[2] * (0.4 + 0.6 * lum))),
+                    a,
+                )
+        return out
 
-    def draw_win(draw):
-        # Emerald badge + gold victory star
-        draw.ellipse([65, 12, 93, 40], fill=(35, 140, 75, 240), outline=(240, 200, 75, 255), width=2)
-        draw_star(draw, 79, 26, 10, 4.2, (255, 220, 75, 255), (40, 30, 10, 255))
+    def remove_dark_bg(im, thresh=68, fade=30):
+        out = im.copy()
+        px = out.load()
+        for y in range(out.height):
+            for x in range(out.width):
+                r, g, b, a = px[x, y]
+                mx = max(r, g, b)
+                sat = mx - min(r, g, b)
+                score = mx + sat * 0.5
+                if score < thresh:
+                    px[x, y] = (r, g, b, 0)
+                elif score < thresh + fade:
+                    px[x, y] = (r, g, b, int(a * (score - thresh) / fade))
+        bbox = out.getbbox()
+        return out.crop(bbox) if bbox else out
 
-    def draw_fastminer(draw):
-        # Mine disc + yellow speed bolt
-        draw.ellipse([65, 22, 87, 38], fill=(160, 170, 155, 255), outline=(30, 35, 30, 255), width=2)
-        draw.rectangle([72, 18, 80, 23], fill=(210, 180, 70, 255))
-        draw.polygon([(88, 10), (80, 25), (86, 25), (82, 40), (94, 22), (87, 22)], fill=(255, 220, 50, 255), outline=(40, 30, 10, 255))
+    def composite_centered(plate, icon, cx, cy, max_h=28, max_w=54, sh_alpha=155):
+        ic = icon.copy()
+        bbox = ic.getbbox()
+        if bbox:
+            ic = ic.crop(bbox)
+        scale = min(max_w / ic.width, max_h / ic.height)
+        nw = max(1, int(round(ic.width * scale)))
+        nh = max(1, int(round(ic.height * scale)))
+        ic = ic.resize((nw, nh), Image.Resampling.LANCZOS)
+        sh = Image.new("RGBA", (nw + 8, nh + 8), (0, 0, 0, 0))
+        al = ic.split()[3].point(lambda a: int(a * sh_alpha / 255))
+        sh.paste((8, 8, 6, 255), (4, 4), al)
+        sh = sh.filter(ImageFilter.GaussianBlur(1.2))
+        out = plate.copy()
+        out.alpha_composite(sh, (cx - nw // 2 - 3, cy - nh // 2 - 2))
+        out.alpha_composite(ic, (cx - nw // 2, cy - nh // 2))
+        return out
 
-    def draw_menu_spawn(draw):
-        # Clean tank/unit silhouette arrow on right
-        draw.rectangle([65, 24, 90, 34], fill=(185, 200, 175, 255), outline=(30, 35, 30, 255))
-        draw.rectangle([71, 18, 84, 24], fill=(185, 200, 175, 255), outline=(30, 35, 30, 255))
-        draw.line([(84, 21), (95, 21)], fill=(220, 225, 210, 255), width=3)
+    def adjust_state(im, state):
+        if state == "01":
+            return ImageEnhance.Brightness(im).enhance(1.12)
+        if state == "02":
+            return ImageEnhance.Brightness(im).enhance(0.88)
+        return im
 
-    def draw_menu_cheats(draw):
-        # Clean gold shield/star emblem
-        draw_star(draw, 79, 26, 12, 5, (255, 205, 60, 255), (50, 35, 10, 255))
-
-    def draw_menu_settings(draw):
-        # Clean gear ring
-        draw.ellipse([68, 15, 90, 37], outline=(190, 205, 220, 255), width=4)
-        draw.ellipse([75, 22, 83, 30], fill=(50, 52, 48, 255))
-
-    def draw_menu_support(draw):
-        # Clean supply/support cross + chevron
-        draw.rectangle([76, 14, 82, 38], fill=(215, 190, 85, 255))
-        draw.rectangle([67, 23, 91, 29], fill=(215, 190, 85, 255))
-
-    icon_drawers = {
-        "repair": draw_repair,
-        "destroyarmor": draw_destroyarmor,
-        "veterancy": draw_veterancy,
-        "win": draw_win,
-        "fastminer": draw_fastminer,
-        "menu_spawn": draw_menu_spawn,
-        "menu_cheats": draw_menu_cheats,
-        "menu_settings": draw_menu_settings,
-        "menu_support": draw_menu_support,
-    }
-
-    with zipfile.ZipFile(iface_pak, "r") as zin, zipfile.ZipFile(tmp_pak, "w", compression=zipfile.ZIP_DEFLATED) as zout:
-        base_plates = {}
+    with (
+        zipfile.ZipFile(iface_pak, "r") as zin,
+        zipfile.ZipFile(tmp_pak, "w", compression=zipfile.ZIP_DEFLATED) as zout,
+        zipfile.ZipFile(os.path.join(goh_res_if, "scene.pak"), "r") as z_scene,
+        zipfile.ZipFile(os.path.join(goh_res_if, "pages.pak"), "r") as z_pages,
+        zipfile.ZipFile(os.path.join(goh_res_if, "interface.pak"), "r") as z_goh_if,
+    ):
+        plates = {}
         for state in ("00", "01", "02"):
-            raw = zin.read(f"interface/scene/unit_icon/whitesnoop/cheats/disabled_{state}.tga")
-            plate = Image.open(io.BytesIO(raw)).convert("RGBA")
-            # Build a 100% clean neutral metallic plate (no "Deactive" text or red status strip)
-            d_clean = ImageDraw.Draw(plate)
-            w, h = plate.size
-            base_shade = {"00": (74, 71, 66), "01": (96, 92, 85), "02": (60, 58, 54)}[state]
-            for yy in range(3, h - 3):
-                # Slight vertical gradient matching unit_icon button style
-                t = yy / float(h)
-                r = int(base_shade[0] * (1.12 - 0.22 * t))
-                g = int(base_shade[1] * (1.12 - 0.22 * t))
-                b = int(base_shade[2] * (1.12 - 0.22 * t))
-                d_clean.line([(3, yy), (w - 4, yy)], fill=(r, g, b, 235))
-            # Subtle inner highlight + dark border
-            d_clean.rectangle([3, 3, w - 4, h - 4], outline=(42, 40, 36, 255))
-            d_clean.line([(4, 4), (w - 5, 4)], fill=(135, 130, 122, 220))
-            d_clean.line([(4, 17), (w - 5, 17)], fill=(48, 46, 42, 180))
-            base_plates[state] = plate
+            plates[(state, False)] = build_clean_plate(zin, state, is_submenu=False)
+            plates[(state, True)] = build_clean_plate(zin, state, is_submenu=True)
 
-        generated_names = set()
-        for icon_name, drawer in icon_drawers.items():
-            for state in ("00", "01", "02"):
-                out_name = f"interface/scene/unit_icon/whitesnoop/cheats/{icon_name}_{state}.tga"
-                generated_names.add(out_name.lower())
+        b0 = plates[("00", False)]
+        wrench = load_img(z_goh_if, "cursor/repair/00.tga")
+        xhair_pure = load_img(z_scene, "scene/minimap/crosshair_00.tga")
+        xhair_red = tint_rgba(xhair_pure, (235, 55, 45))
+        xhair_gold = tint_rgba(xhair_pure, (240, 200, 95))
+        star = load_img(z_pages, "pages/main/star_active.tga")
+        medal = load_img(z_pages, "pages/inventory/medals/ww2_veteran_medal_small.dds")
+        rank8_clean = remove_dark_bg(
+            load_img(z_pages, "pages/main/dynamic_campaign/icon_rank8.tga").crop((3, 3, 38, 25)),
+            thresh=68,
+            fade=30,
+        )
+        rank8_clean = ImageEnhance.Contrast(ImageEnhance.Brightness(rank8_clean).enhance(1.3)).enhance(1.2)
+        gear = load_img(z_goh_if, "skin/game/button/bkg/menu_options_00.tga")
+        heavy_sil = diff_cutout(load_img(zin, "interface/scene/unit_icon/whitesnoop/menus/vehicle_class/heavy_00.tga"), b0, thresh=22)
+        mines_cut = diff_cutout(load_img(zin, "interface/scene/unit_icon/whitesnoop/cheats/mines_00.tga"), b0, thresh=24)
+        veh_cut = diff_cutout(load_img(zin, "interface/scene/unit_icon/whitesnoop/menus/vehicle_00.tga"), b0, thresh=18)
+        arty_cut = diff_cutout(load_img(zin, "interface/scene/unit_icon/whitesnoop/menus/arty_00.tga"), b0, thresh=18)
+
+        da_comp = Image.new("RGBA", (62, 32), (0, 0, 0, 0))
+        da_comp.alpha_composite(heavy_sil.resize((52, 20), Image.Resampling.LANCZOS), (5, 7))
+        da_comp.alpha_composite(xhair_red.resize((26, 26), Image.Resampling.LANCZOS), (18, 3))
+
+        fm_comp = Image.new("RGBA", (66, 34), (0, 0, 0, 0))
+        mc_s = mines_cut.copy()
+        mc_s.thumbnail((42, 28), Image.Resampling.LANCZOS)
+        fm_comp.alpha_composite(mc_s, (1, 4))
+        fm_comp.alpha_composite(wrench.resize((22, 22), Image.Resampling.LANCZOS), (42, 4))
+
+        sup_comp = Image.new("RGBA", (64, 32), (0, 0, 0, 0))
+        ac_s = arty_cut.copy()
+        ac_s.thumbnail((44, 27), Image.Resampling.LANCZOS)
+        sup_comp.alpha_composite(ac_s, (1, 3))
+        sup_comp.alpha_composite(xhair_gold.resize((20, 20), Image.Resampling.LANCZOS), (42, 5))
+
+        icon_specs = {
+            "repair": (False, wrench, 52, 33, 28, 46),
+            "destroyarmor": (False, da_comp, 52, 33, 30, 62),
+            "veterancy": (False, rank8_clean, 52, 33, 27, 56),
+            "win": (False, medal, 52, 33, 28, 34),
+            "fastminer": (False, fm_comp, 52, 33, 30, 66),
+            "menu_spawn": (True, veh_cut, 44, 33, 29, 58),
+            "menu_cheats": (True, star, 45, 33, 29, 44),
+            "menu_settings": (True, gear, 45, 33, 26, 36),
+            "menu_support": (True, sup_comp, 45, 33, 29, 64),
+        }
+
+        generated_names = {
+            f"interface/scene/unit_icon/whitesnoop/cheats/{name}_{st}.tga".lower()
+            for name in icon_specs
+            for st in ("00", "01", "02")
+        }
 
         for item in zin.infolist():
             if item.filename.lower() in generated_names:
                 continue
             zout.writestr(item, zin.read(item.filename))
 
-        for icon_name, drawer in icon_drawers.items():
+        for icon_name, (is_sub, asset, cx, cy, mh, mw) in icon_specs.items():
             for state in ("00", "01", "02"):
-                im = base_plates[state].copy()
-                d = ImageDraw.Draw(im)
-                drawer(d)
+                im = composite_centered(plates[(state, is_sub)], adjust_state(asset, state), cx, cy, max_h=mh, max_w=mw)
                 buf = io.BytesIO()
                 im.save(buf, format="TGA")
                 out_name = f"interface/scene/unit_icon/whitesnoop/cheats/{icon_name}_{state}.tga"
                 zout.writestr(out_name, buf.getvalue())
 
     os.replace(tmp_pak, iface_pak)
-    print("Generated 5 custom 3-state TGA button icons in interface.pak.")
+    print(f"Generated {len(icon_specs)} native-style 3-state TGA button icons in interface.pak.")
 
 
 def patch_mi_content(raw_txt, label):
@@ -1066,7 +1194,7 @@ def patch_mi_content(raw_txt, label):
         "cheat_infammo_on": ('"Infinite Ammo"', None, '"Disable: remove map-wide resupply aura"'),
         "cheat_fuel-stam-off": ('"Fuel & Stamina"', None, '"Enable: keep soldier stamina at 100% and vehicle fuel full"'),
         "cheat_fuel-stam-on": ('"Fuel & Stamina"', None, '"Disable: turn off infinite fuel & stamina"'),
-        "cheat_aimrange_accuracy_on": ('"Range & Accuracy"', None, '"Enable: grant 3x weapon range and 5x accuracy to your units"'),
+        "cheat_aimrange_accuracy_on": ('"Range & Accuracy"', None, '"Enable: massively extend weapon range and grant pinpoint mortar & gun accuracy"'),
         "cheat_aimrange_accuracy_off": ('"Range & Accuracy"', None, '"Disable: restore normal weapon range and accuracy"'),
         "cheat_enemy": ('"Enemy Cheats"', None, '"Cheats below target enemy units on the map"'),
         "cheatweakenemy": ('"Instakill"', None, '"Enable: reduce enemy soldier HP to 1 and enemy vehicle armor to 1%"'),
@@ -1136,8 +1264,8 @@ def patch_mi_content(raw_txt, label):
             '\t\t\t\t\t{"reinforcement"\n\t\t\t\t\t\t{operation hide}\n\t\t\t\t\t\t{name cheat_addexp}\n\t\t\t\t\t}\n\t\t\t\t\t{"reinforcement"\n\t\t\t\t\t\t{operation hide}\n\t\t\t\t\t\t{name cheat_conquest_win}\n\t\t\t\t\t}',
         )
 
-    # Fix swapped aimrange icons: when cheat_aimrange$ != 1 show _off (red), when == 1 show _on (green)
-    old_aim_show = """\t\t\t\t\t{"if"
+    # Normalize aimrange toggle icons: _on has image "disabled" (shown when != 1), _off has image "enabled" (shown when == 1)
+    correct_aim_show = """\t\t\t\t\t{"if"
 \t\t\t\t\t\t{condition
 \t\t\t\t\t\t\t{type cmp_i}
 \t\t\t\t\t\t\t{var "cheat_aimrange$"}
@@ -1161,9 +1289,10 @@ def patch_mi_content(raw_txt, label):
 \t\t\t\t\t\t\t{name cheat_aimrange_accuracy_off}
 \t\t\t\t\t\t}
 \t\t\t\t\t}"""
-    new_aim_show = old_aim_show.replace("cheat_aimrange_accuracy_on", "__TMP__").replace("cheat_aimrange_accuracy_off", "cheat_aimrange_accuracy_on").replace("__TMP__", "cheat_aimrange_accuracy_off")
-    if old_aim_show in txt:
-        txt = txt.replace(old_aim_show, new_aim_show, 1)
+    swapped_aim_show = correct_aim_show.replace("cheat_aimrange_accuracy_on", "__TMP__").replace("cheat_aimrange_accuracy_off", "cheat_aimrange_accuracy_on").replace("__TMP__", "cheat_aimrange_accuracy_off")
+    if swapped_aim_show in txt:
+        txt = txt.replace(swapped_aim_show, correct_aim_show, 1)
+    assert correct_aim_show in txt, f"Failed to verify normalized aimrange show block in {label}"
 
     # 7. Initialize cheat_options-player$ = 0 and explicitly reset one-shot events in cheats/set/vars
     if '{var "cheat_options-player$"}' not in txt[:16000]:
@@ -1173,14 +1302,19 @@ def patch_mi_content(raw_txt, label):
             1,
         )
 
-    # 8. Replace broken triggers with fixed ones + add auto_detect_player + conquest_win
+    # 8. Replace broken triggers idempotently + add auto_detect_player + conquest_win + fast_miner
+    for dup_hdr in ('{"cheats/auto_detect_player"', '{"cheats/active/repair"', '{"cheats/active/conquest_win"', '{"cheats/units/fast_miner"'):
+        txt, _ = replace_trigger_block(txt, dup_hdr, "")
     txt, ok1 = replace_trigger_block(
         txt,
         '{"cheats/active/addexp"',
         make_auto_detect_player_trigger() + "\n" + make_addexp_trigger() + "\n" + make_repair_trigger() + "\n" + make_conquest_win_trigger() + "\n" + make_miner_trigger(),
     )
     txt, ok2 = replace_trigger_block(txt, '{## "cheats/destroyarmor"', make_destroyarmor_trigger())
+    if not ok2:
+        txt, ok2 = replace_trigger_block(txt, '{"cheats/destroyarmor"', make_destroyarmor_trigger())
     txt, ok3 = replace_trigger_block(txt, '{"cheats/active/aimrange"', make_aimrange_trigger())
+    txt, _ = replace_trigger_block(txt, '{"cheats/active/aimrange_off"', make_aimrange_off_trigger())
 
     # 9. Upgrade cheats/units/mine and cheats/units/mine_ap to spawn 8 armed mines per click
     # Fix waypoint buttons to use eventEnd (fires AFTER placing waypoint 30001 on the ground!)
@@ -1393,7 +1527,6 @@ def rewrite_cheatsmod_pak():
 \t\t}
 \t}
 \t{modifier
-\t\t{name cheat_aimrange}
 \t\t{filter
 \t\t\t{include
 \t\t\t\t{tag
@@ -1403,12 +1536,12 @@ def rewrite_cheatsmod_pak():
 \t\t}
 \t\t{parameters
 \t\t\t{aim_range
-\t\t\t\t{scale 3}
+\t\t\t\t{place "*"}
+\t\t\t\t{scale 999}
 \t\t\t}
 \t\t}
 \t}
 \t{modifier
-\t\t{name cheat_accuracy}
 \t\t{filter
 \t\t\t{include
 \t\t\t\t{tag
@@ -1418,7 +1551,8 @@ def rewrite_cheatsmod_pak():
 \t\t}
 \t\t{parameters
 \t\t\t{accuracy
-\t\t\t\t{scale 5}
+\t\t\t\t{place "*"}
+\t\t\t\t{scale 999}
 \t\t\t}
 \t\t}
 \t}
