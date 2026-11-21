@@ -152,7 +152,7 @@ def rewrite_supply_and_entities():
         f.write(supply_inc)
     print("Rewrote cheat_supply.inc (MACE-native, lightweight, FPS-friendly).")
 
-    # 2. Update entity.pak: instant-plant mines with cheat_mine tag + ammo_cheatsmod_global
+    # 2. Update entity.pak: instant-plant mines + ammo_cheatsmod_global
     mine_at_def = """{actor
 \t(include "/properties/stuff_mine.ext")
 \t{extension "mine_m1a1.mdl"}
@@ -164,7 +164,6 @@ def rewrite_supply_and_entities():
 \t}
 \t{collider "mine.at"}
 \t{props "antitank"}
-\t{tags "cheat_mine"}
 \t(include "/properties/shadow/round.inc")
 \t{Obstacle "body"
 \t\t{Circle2
@@ -187,7 +186,6 @@ def rewrite_supply_and_entities():
 \t}
 \t{collider "mine.ap"}
 \t{props "bounding" "antipersonnel"}
-\t{tags "cheat_mine"}
 \t{Obstacle "body"
 \t\t{Circle2
 \t\t\t{Radius 20}
@@ -201,9 +199,13 @@ def rewrite_supply_and_entities():
     ammo_global_def = """{actor
 \t(include "/properties/ammo_box.ext")
 \t(include "/cheats/cheat_supply.inc")
-\t{props "no_recrew_logic"}
-\t{tags "cheatsmod_inf-ammo"}
+\t{extension "../ammo_cheatsmod/inf_crate.mdl"}
+\t{props "vision_lev00_can" "ammo_crate" "no_recrew_logic"}
 \t("cheat_supply_ammo_global")
+\t{extender "inventory"
+\t\t{Box
+\t\t}
+\t}
 \t{mass 100}
 }
 """
@@ -925,20 +927,30 @@ def patch_mi_content(raw_txt, label):
     txt, ok2 = replace_trigger_block(txt, '{## "cheats/destroyarmor"', make_destroyarmor_trigger())
     txt, ok3 = replace_trigger_block(txt, '{"cheats/active/aimrange"', make_aimrange_trigger())
 
-    # 9. Upgrade cheats/units/mine and cheats/units/mine_ap to spawn 8 mines per click
+    # 9. Upgrade cheats/units/mine and cheats/units/mine_ap to spawn 8 armed mines per click
     old_mine_spawn = """\t\t\t\t\t{"spawn"
 \t\t\t\t\t\t{entity "mine_antitank_cheat"}
 \t\t\t\t\t\t{waypoint "30001"}
 \t\t\t\t\t}"""
+    new_mine_spawn = """\t\t\t\t\t{"spawn"
+\t\t\t\t\t\t{entity "mine_antitank_cheat"}
+\t\t\t\t\t\t{waypoint "30001"}
+\t\t\t\t\t\t{tag cheat_mine}
+\t\t\t\t\t}"""
     if txt.count(old_mine_spawn) == 4:
-        txt = txt.replace(old_mine_spawn, old_mine_spawn + "\n" + old_mine_spawn)
+        txt = txt.replace(old_mine_spawn, new_mine_spawn + "\n" + new_mine_spawn)
 
     old_mine_ap_spawn = """\t\t\t\t\t{"spawn"
 \t\t\t\t\t\t{entity "mine_s_cheat"}
 \t\t\t\t\t\t{waypoint "30001"}
 \t\t\t\t\t}"""
+    new_mine_ap_spawn = """\t\t\t\t\t{"spawn"
+\t\t\t\t\t\t{entity "mine_s_cheat"}
+\t\t\t\t\t\t{waypoint "30001"}
+\t\t\t\t\t\t{tag cheat_mine}
+\t\t\t\t\t}"""
     if txt.count(old_mine_ap_spawn) == 4:
-        txt = txt.replace(old_mine_ap_spawn, old_mine_ap_spawn + "\n" + old_mine_ap_spawn)
+        txt = txt.replace(old_mine_ap_spawn, new_mine_ap_spawn + "\n" + new_mine_ap_spawn)
 
     # Faster arming in minegetsfilled (0.2s instead of 1s)
     txt = txt.replace(
@@ -959,6 +971,7 @@ def patch_mi_content(raw_txt, label):
     new_infammo_on = """\t\t\t\t\t\t\t{"spawn"
 \t\t\t\t\t\t\t\t{entity "ammo_cheatsmod_global"}
 \t\t\t\t\t\t\t\t{waypoint "30001"}
+\t\t\t\t\t\t\t\t{tag cheatsmod_inf-ammo}
 \t\t\t\t\t\t\t}
 \t\t\t\t\t\t\t{"entity_state"
 \t\t\t\t\t\t\t\t{selector
