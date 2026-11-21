@@ -329,10 +329,10 @@ def make_addexp_trigger():
 
 
 def make_auto_detect_player_trigger():
-    """Auto-detects the actual human player slot (0-7) via _user tag or autoassign probe."""
+    """Auto-detects the actual human player slot (0-7) using {select {player}} AND {state user_control}."""
     user_checks = []
-    probe_checks = []
-    for p in range(8):
+    # Check 7..2, then 0, then 1 so Player 1 (Conquest/MP) or Player 0 (SP) wins cleanly
+    for p in [7, 6, 5, 4, 3, 2, 0, 1]:
         user_checks.append(f"""\t\t\t\t\t{{"if"
 \t\t\t\t\t\t{{condition
 \t\t\t\t\t\t\t{{type entities}}
@@ -340,33 +340,18 @@ def make_auto_detect_player_trigger():
 \t\t\t\t\t\t\t\t{{source advanced}}
 \t\t\t\t\t\t\t\t{{ignore_captured_by_user 0}}
 \t\t\t\t\t\t\t\t{{group
-\t\t\t\t\t\t\t\t\t{{include
-\t\t\t\t\t\t\t\t\t\t{{tag
-\t\t\t\t\t\t\t\t\t\t\t{{tag _user}}
-\t\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t\t{{select
 \t\t\t\t\t\t\t\t\t\t{{player "{p}"}}
 \t\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t}}
-\t\t\t\t\t\t{{"set_i"
-\t\t\t\t\t\t\t{{var "cheat_options-player$"}}
-\t\t\t\t\t\t\t{{op "="}}
-\t\t\t\t\t\t\t{{value {p}}}
-\t\t\t\t\t\t}}
-\t\t\t\t\t}}""")
-        probe_checks.append(f"""\t\t\t\t\t{{"if"
-\t\t\t\t\t\t{{condition
-\t\t\t\t\t\t\t{{type entities}}
-\t\t\t\t\t\t\t{{selector
-\t\t\t\t\t\t\t\t{{source advanced}}
-\t\t\t\t\t\t\t\t{{ignore_captured_by_user 0}}
-\t\t\t\t\t\t\t\t{{group
 \t\t\t\t\t\t\t\t\t{{include
-\t\t\t\t\t\t\t\t\t\t{{tag
-\t\t\t\t\t\t\t\t\t\t\t{{tag cheat_player_probe}}
+\t\t\t\t\t\t\t\t\t\t{{state
+\t\t\t\t\t\t\t\t\t\t\t{{state user_control}}
 \t\t\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t\t\t\t{{player "{p}"}}
+\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t\t{{exclude
+\t\t\t\t\t\t\t\t\t\t{{state
+\t\t\t\t\t\t\t\t\t\t\t{{state "dead inactive"}}
+\t\t\t\t\t\t\t\t\t\t}}
 \t\t\t\t\t\t\t\t\t}}
 \t\t\t\t\t\t\t\t}}
 \t\t\t\t\t\t\t}}
@@ -382,29 +367,11 @@ def make_auto_detect_player_trigger():
 \t\t\t\t}}
 \t\t\t\t{{actions
 \t\t\t\t\t{{"delay"
-\t\t\t\t\t\t{{time 1}}
+\t\t\t\t\t\t{{time 2}}
 \t\t\t\t\t}}
-\t\t\t\t\t{{"spawn"
-\t\t\t\t\t\t{{entity "ammo_cheatsmod_global"}}
-\t\t\t\t\t\t{{waypoint "30001"}}
-\t\t\t\t\t\t{{tag cheat_player_probe}}
-\t\t\t\t\t}}
-\t\t\t\t\t{{"autoassign"
-\t\t\t\t\t\t{{selector
-\t\t\t\t\t\t\t{{tag cheat_player_probe}}
-\t\t\t\t\t\t}}
-\t\t\t\t\t}}
+{chr(10).join(user_checks)}
 \t\t\t\t\t{{"delay"
-\t\t\t\t\t\t{{time 0.2}}
-\t\t\t\t\t}}
-{chr(10).join(probe_checks)}
-\t\t\t\t\t{{"delete"
-\t\t\t\t\t\t{{selector
-\t\t\t\t\t\t\t{{tag cheat_player_probe}}
-\t\t\t\t\t\t}}
-\t\t\t\t\t}}
-\t\t\t\t\t{{"delay"
-\t\t\t\t\t\t{{time 3}}
+\t\t\t\t\t\t{{time 4}}
 \t\t\t\t\t}}
 {chr(10).join(user_checks)}
 \t\t\t\t}}

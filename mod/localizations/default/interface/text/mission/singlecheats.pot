@@ -190,5 +190,7 @@ Current Player: <e(shadow)><c(f2c200)>3</c></e>"}
 	{"Fast Miner" "Fast Mine Engineer"}
 	{"Fast Miner hint" "Spawn Engineer with 40 fast AT + 40 fast AP mines (Hold Shift to queue minefields!)"}
 	{"Fast Miner" "Fast Mine Engineer"}
+	{"Fast Miner hint" "Spawn Engineer with 40 fast AT + 40 fast AP mines (Hold Shift to queue minefields!)"}
+	{"Fast Miner" "Fast Mine Engineer"}
 	{"Fast Miner hint" "Spawn Engineer with 40 fast AT + 40 fast AP mines (Hold Shift to queue!)"}
 }
