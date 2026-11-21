@@ -1,0 +1,7 @@
+{mod
+	{name "CheatsMod 2.6 (1.069 + Conquest Fix)"}
+	{tags "Mod"}
+	{desc "CheatsMod 2.6 updated for game v1.069.0 & MACE. Fixes missing menu and keeps the cheat menu persistent after all Conquest waves are called in."}
+	{minGameVersion "1.069.0"}
+	{maxGameVersion "any"}
+}

@@ -1,0 +1,5 @@
+{event "cheatmod/spawn/modtank/1"}
+{event "cheatmod/spawn/modtank/2"}
+{event "cheatmod/spawn/modtank/3"}
+{event "cheatmod/spawn/modhuman/1"}
+{event "cheatmod/spawn/modhuman/2"}

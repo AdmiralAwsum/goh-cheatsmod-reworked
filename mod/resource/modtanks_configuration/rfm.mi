@@ -1,0 +1,28 @@
+{"cheat_mod_tank_btr_1"    {state hidden}   {text "sdkfz7"}   {image "sdkfz7"}   {hint ""}   {count -1}   {score 0}   {delay 0}   {eventEnd "cheatmod/spawn/modtank/1"}   {waypoint "30001"}
+}
+{"cheat_mod_tank_btr_2"    {state hidden}   {text "sdkfz7"}   {image "sdkfz7"}   {hint ""}   {count -1}   {score 0}   {delay 0}   {eventEnd "cheatmod/spawn/modtank/2"}   {waypoint "30001"}
+}
+{"cheat_mod_tank_btr_3"    {state hidden}   {text "sdkfz7"}   {image "sdkfz7"}   {hint ""}   {count -1}   {score 0}   {delay 0}   {eventEnd "cheatmod/spawn/modtank/3"}   {waypoint "30001"}
+}
+{"cheat_mod_tank_light_1"    {state hidden}   {text "pz35t"}   {image "pz35t"}   {hint ""}   {count -1}   {score 0}   {delay 0}   {eventEnd "cheatmod/spawn/modtank/1"}   {waypoint "30001"}
+}
+{"cheat_mod_tank_light_2"    {state hidden}   {text "pz35t"}   {image "pz35t"}   {hint ""}   {count -1}   {score 0}   {delay 0}   {eventEnd "cheatmod/spawn/modtank/2"}   {waypoint "30001"}
+}
+{"cheat_mod_tank_light_3"    {state hidden}   {text "pz35t"}   {image "pz35t"}   {hint ""}   {count -1}   {score 0}   {delay 0}   {eventEnd "cheatmod/spawn/modtank/3"}   {waypoint "30001"}
+}
+{"cheat_mod_tank_medium_1"    {state hidden}   {text "stug3g"}   {image "stug3g"}   {hint ""}   {count -1}   {score 0}   {delay 0}   {eventEnd "cheatmod/spawn/modtank/1"}   {waypoint "30001"}
+}
+{"cheat_mod_tank_medium_2"    {state hidden}   {text "stug3g"}   {image "stug3g"}   {hint ""}   {count -1}   {score 0}   {delay 0}   {eventEnd "cheatmod/spawn/modtank/2"}   {waypoint "30001"}
+}
+{"cheat_mod_tank_medium_3"    {state hidden}   {text "stug3g"}   {image "stug3g"}   {hint ""}   {count -1}   {score 0}   {delay 0}   {eventEnd "cheatmod/spawn/modtank/3"}   {waypoint "30001"}
+}
+{"cheat_mod_tank_heavy_1"    {state hidden}   {text "tiger1hunt"}   {image "tiger1hunt"}   {hint ""}   {count -1}   {score 0}   {delay 0}   {eventEnd "cheatmod/spawn/modtank/1"}   {waypoint "30001"}
+}
+{"cheat_mod_tank_heavy_2"    {state hidden}   {text "tiger1hunt"}   {image "tiger1hunt"}   {hint ""}   {count -1}   {score 0}   {delay 0}   {eventEnd "cheatmod/spawn/modtank/2"}   {waypoint "30001"}
+}
+{"cheat_mod_tank_heavy_3"    {state hidden}   {text "tiger1hunt"}   {image "tiger1hunt"}   {hint ""}   {count -1}   {score 0}   {delay 0}   {eventEnd "cheatmod/spawn/modtank/3"}   {waypoint "30001"}
+}
+{"cheat_mod_tank_human_1"    {state hidden}   {text "flamer" }   {image "flamer" }   {hint ""}   {count -1}   {score 0}   {delay 0}   {eventEnd "cheatmod/spawn/modhuman/1"}   {waypoint "30001"}
+}
+{"cheat_mod_tank_human_2"    {state hidden}   {text "rifle" }   {image "rifle" }   {hint ""}   {count -1}   {score 0}   {delay 0}   {eventEnd "cheatmod/spawn/modhuman/2"}   {waypoint "30001"}
+}

@@ -1,0 +1,2 @@
+mp/ger/mid/flamer
+mp/rus/mid/rifle

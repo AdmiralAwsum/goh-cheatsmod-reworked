@@ -1,0 +1,190 @@
+#, fuzzy
+msgid ""
+msgstr "Configure CheatsMod"
+"Project-Id-Version: CtA - Gates of Hell (announcements)\n"
+"Language: en\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
+"POT-Creation-Date: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+
+
+msgctxt "mission/singlecheats/Configure cheatsmod"
+msgid "Configure cheatsmod"
+msgstr "Configure CheatsMod"
+
+{tags
+	{"c_aimrange_0" "Enabled: Max Range & Accuracy"}
+	{"c_fuel_0" "Enabled: Infinite Fuel & Stamina"}
+	{"c_godmode_0" "Enabled: God Mode (Infinite Health & Armor)"}
+	{"c_infammo_0" "Enabled: Infinite Ammo (Map-Wide Resupply)"}
+	{"c_setplayer_0" "Active Player set to: <e(shadow)><c(ff0000)>1</c></e>"}
+	{"c_setplayer_1" "Active Player set to: <e(shadow)><c(00d319)>2</c></e>"}
+	{"c_setplayer_2" "Active Player set to: <e(shadow)><c(f2c200)>3</c></e>"}
+	{"c_setplayer_3" "Active Player set to: <e(shadow)><c(ffffff)>0</c></e>"}
+	{"c_weakenemy_0" "Enabled: Instakill Enemies (Infantry & Vehicles)"}
+	{"cheatversion" "<s(25)><c(204 204 204)>CheatsMod <c(40c040)>2.6 Reworked<c(204 204 204)><s(8)>"}
+	{"cheatversion1" "<c(40c040)>v2.6 Reworked"}
+	{"c_deactivated_0" "Cheat Deactivated"}
+	{"cheats_option_select" "Cheat Settings:"}
+	{"German unit set" "German unit set"}
+	{"USA unit set" "USA unit set"}
+	{"UK unit set" "UK unit set"}
+	{"Russian unit set" "Russian unit set"}
+	{"Japanese unit set" "Japanese unit set"}
+	{"Autoassign" "<e(shadow)><c(f2c200)>Auto-Assign</c></e>"}
+	{"Next: Player 1" "Next: Player 1"}
+	{"Next: Player 2" "Next: Player 2"}
+	{"Next: Player 3" "Next: Player 3"}
+	{"Next: Autoassign" "Next: Autoassign"}
+	{"Deploy ammo" "Deploy ammo"}
+	{"Deploy an ammo box" "Deploy an ammo box"}
+	{"Clean map from cheated units" "Clean map from cheated units"}
+	{"infantry" "infantry"}
+	{"Open infantry menu" "Open infantry menu"}
+	{"Single" "Single"}
+	{"Single infantry" "Single infantry"}
+	{"Squad" "Squad"}
+	{"Squad infantry" "Squad infantry"}
+	{"Heavy MG" "Heavy MG"}
+	{"Land Mattress" "Land Mattress"}
+	{"M45 Maxson AA" "M45 Maxson AA"}
+	{"Maxim MG" "Maxim MG"}
+	{"Vickers MG" "Vickers MG"}
+	{"degtyarev" "degtyarev"}
+	{"Rifleman" "Rifleman"}
+	{"SMG" "SMG"}
+	{"MG" "MG"}
+	{"Bazooka" "Bazooka"}
+	{"Flamethrower" "Flamethrower"}
+	{"Sniper" "Sniper"}
+	{"Medic" "Medic"}
+	{"Tankman" "Tankman"}
+	{"Conscripts" "Conscripts"}
+	{"Assault infantry" "Assault infantry"}
+	{"Regular Infantry" "Regular Infantry"}
+	{"Paratroopers" "Paratroopers"}
+	{"Panzersquad" "Panzersquad"}
+	{"Combat engineer AP" "Combat engineer AP"}
+	{"Combat engineer AT" "Combat engineer AT"}
+	{"Sappers" "Sappers"}
+	{"Add MP:" "Add MP:"}
+	{"Spend more MP on buying!" "Spend more MP on buying!"}
+	{"tanks" "tanks"}
+	{"BTR" "BTR"}
+	{"Light" "Light"}
+	{"Medium" "Medium"}
+	{"Heavy" "Heavy"}
+	{"artillery" "artillery"}
+	{"airplanes" "airplanes"}
+	{"[USA] P51 Mustang" "[USA] P51 Mustang"}
+	{"[Jap] A6M Zero" "[Jap] A6M Zero"}
+	{"[Ger] BF-109" "[Ger] BF-109"}
+	{"[Rus] IL-2" "[Rus] IL-2"}
+	{"[Ger] JU-87" "[Ger] JU-87"}
+	{"Health & Armour" "Health & Armour"}
+	{"Infinite Health & Armor(tanks)" "Infinite Health & Armor(tanks)"}
+	{"Infinite Ammo" "Infinite Ammo"}
+	{"Ammo will replenish when nothing left" "Ammo will replenish when nothing left"}
+	{"Fuel & Stamina" "Fuel & Stamina"}
+	{"Infinite fuel and stamina" "Infinite fuel and stamina"}
+	{"Aimrange" "Aimrange"}
+	{"Increase Aimrange + Accuracy" "Increase Aimrange + Accuracy"}
+	{"Disable" "Disable"}
+	{"Cheats below effects enemy" "Cheats below effects enemy"}
+	{"Instakill" "Instakill"}
+	{"Instant kill InfantryTanks" "Instant kill InfantryTanks"}
+	{"repair all tanks" "repair all tanks"}
+	{"Repairs all broken tanks on map" "Repairs all broken tanks on map"}
+	{"Open this menu to spawn objects" "Open this menu to spawn objects"}
+	{"Open this menu to use Cheats" "Open this menu to use Cheats"}
+	{"Configure cheatsmod" "Configure cheatsmod"}
+	{"spawn" "spawn"}
+	{"cheat" "cheat"}
+	{"Settings" "Settings"}
+	{"Set to player0" "Switch active player if cheats don't affect your units.
+Current Player: <e(shadow)><c(ffffff)>0</c></e>"}
+	{"Set to player1" "Switch active player if cheats don't affect your units.
+Current Player: <e(shadow)><c(ff0000)>1</c></e>"}
+	{"Set to player2" "Switch active player if cheats don't affect your units.
+Current Player: <e(shadow)><c(00d319)>2</c></e>"}
+	{"Set to player3" "Switch active player if cheats don't affect your units.
+Current Player: <e(shadow)><c(f2c200)>3</c></e>"}
+	{"Planeheight:15" "Planeheight:15"}
+	{"Planeheight:20" "Planeheight:20"}
+	{"Planeheight:55" "Planeheight:55"}
+	{"Deploy Explosion" "Deploy Explosion"}
+	{"Artillery Barrage" "Artillery Barrage"}
+	{"Deploy mines" "AT Mines (x8)"}
+	{"Lay a mine field" "Spawn 8 armed Anti-Tank mines at cursor"}
+	{"Destroy enemy armor" "Destroy enemy armor"}
+	{"PzKpfw II Luchs" "PzKpfw II Luchs"}
+	{"SPG Hetzer" "SPG Hetzer"}
+	{"Marder III H" "Marder III H"}
+	{"Flakpanzer I" "Flakpanzer I"}
+	{"PzKpfw I Ausf.B" "PzKpfw I Ausf.B"}
+	{"PzKpfw II Ausf.F" "PzKpfw II Ausf.F"}
+	{"Wespe" "Wespe"}
+	{"PzKpfw V" "PzKpfw V"}
+	{"StuG III G" "StuG III G"}
+	{"Jagdpanzer IV" "Jagdpanzer IV"}
+	{"PzKpfw IV H" "PzKpfw IV H"}
+	{"PzKpfw IV G" "PzKpfw IV G"}
+	{"PzKpfw III" "PzKpfw III"}
+	{"Wirbelwind" "Wirbelwind"}
+	{"Nashorn" "Nashorn"}
+	{"Jagdtiger" "Jagdtiger"}
+	{"Kingtiger H" "Kingtiger H"}
+	{"Tiger I" "Tiger I"}
+	{"Sturmtiger" "Sturmtiger"}
+	{"Jagdpanther" "Jagdpanther"}
+	{"Hummel" "Hummel"}
+	{"Elefant" "Elefant"}
+	{"Willys AT" "Willys AT"}
+	{"M8 Greyhound" "M8 Greyhound"}
+	{"M24 Chaffee" "M24 Chaffee"}
+	{"M18 Hellcat" "M18 Hellcat"}
+	{"M3 Lee" "M3 Lee"}
+	{"M4A3E2 Jumbo" "M4A3E2 Jumbo"}
+	{"M10 Wolverine" "M10 Wolverine"}
+	{"M4A3R2 Croc" "M4A3R2 Croc"}
+	{"M4A3 Sherman" "M4A3 Sherman"}
+	{"M4A4 Tulip" "M4A4 Tulip"}
+	{"M4A3E8 Sherman" "M4A3E8 Sherman"}
+	{"M4A3 Calliope" "M4A3 Calliope"}
+	{"Super Pershing" "Super Pershing"}
+	{"M26 Pershing" "M26 Pershing"}
+	{"Centurion" "Centurion"}
+	{"M36 Slugger" "M36 Slugger"}
+	{"Willys MB" "Willys MB"}
+	{"Dodge WC-55" "Dodge WC-55"}
+	{"Bren carrier" "Bren carrier"}
+	{"Tetrarch" "Tetrarch"}
+	{"Crusader" "Crusader"}
+	{"Crusader AA" "Crusader AA"}
+	{"Crusader AAII" "Crusader AAII"}
+	{"Mk.III Valentine" "Mk.III Valentine"}
+	{"Archer" "Archer"}
+	{"Mk.IIA Matilda" "Mk.IIA Matilda"}
+	{"Bishop" "Bishop"}
+	{"Comet I (A34)" "Comet I (A34)"}
+	{"M4A4 Firefly" "M4A4 Firefly"}
+	{"Mk.VIII Cromwell" "Mk.VIII Cromwell"}
+	{"Mk.IV Churchill" "Mk.IV Churchill"}
+	{"Churchill AVRE" "Churchill AVRE"}
+	{"Black Prince" "Black Prince"}
+	{"Churchill Crocodile" "Churchill Crocodile"}
+	{"Mk.VII Churchill" "Mk.VII Churchill"}
+	{"Achilles 1C" "Achilles 1C"}
+	{"Katyusha" "Katyusha"}
+	{"Support" "Support"}
+	{"Previous menu" "Previous menu"}
+	{"Fast Miner" "Fast Mine Engineer"}
+	{"Fast Miner hint" "Spawn Engineer with 40 fast AT + 40 fast AP mines (Hold Shift to queue minefields!)"}
+	{"Fast Miner" "Fast Mine Engineer"}
+	{"Fast Miner hint" "Spawn Engineer with 40 fast AT + 40 fast AP mines (Hold Shift to queue!)"}
+}

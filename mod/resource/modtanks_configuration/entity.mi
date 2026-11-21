@@ -1,0 +1,6 @@
+	{Entity "sdkfz7" 0x1        {Position 10 1}        {Player 0}        {MID 1}    }    {Tags "csp_1" "cheat_delete" "hidden" "cheat_infantry_spawn" 0x1}
+	{Entity "pz35t" 0x2        {Position 20 1}        {Player 0}        {MID 2}    }    {Tags "csp_2" "cheat_delete" "hidden" "cheat_infantry_spawn" 0x2}
+	{Entity "stug3g" 0x3        {Position 30 1}        {Player 0}        {MID 3}    }    {Tags "csp_3" "cheat_delete" "hidden" "cheat_infantry_spawn" 0x3}
+	{Entity "tiger1hunt" 0x4        {Position 40 1}        {Player 0}        {MID 4}    }    {Tags "csp_4" "cheat_delete" "hidden" "cheat_infantry_spawn" 0x4}
+	{Human "mp/ger/mid/flamer" 0x1        {Position 10 100}        {Player 0}        {MID 801}    }    {Tags "hsp_1" "cheat_delete" "hidden" "cheat_infantry_spawn" 0x1}
+	{Human "mp/rus/mid/rifle" 0x2        {Position 20 100}        {Player 0}        {MID 802}    }    {Tags "hsp_2" "cheat_delete" "hidden" "cheat_infantry_spawn" 0x2}

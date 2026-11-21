@@ -1,0 +1,479 @@
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: Gates of Hell Editor (german)\n"
+"POT-Creation-Date: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Language: en\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
+
+msgctxt "mission/single/missions/german/tow_with"
+msgid "Link and Tow"
+msgstr ""
+
+msgctxt "mission/single/missions/german/walk_it_in"
+msgid "Walk it in."
+msgstr ""
+
+msgctxt "mission/single/missions/german/walk_in"
+msgid "Walk in."
+msgstr ""
+
+msgctxt "mission/single/missions/german/ride_in"
+msgid "Ride in."
+msgstr ""
+
+msgctxt "mission/single/missions/german/squad1"
+msgid "squad1."
+msgstr ""
+
+msgctxt "mission/single/missions/german/squad2"
+msgid "squad2."
+msgstr ""
+
+msgctxt "mission/single/missions/german/squad3"
+msgid "squad3."
+msgstr ""
+
+msgctxt "mission/single/missions/german/squad4"
+msgid "squad4."
+msgstr ""
+
+msgctxt "mission/single/missions/german/squad5"
+msgid "squad5."
+msgstr ""
+
+msgctxt "mission/single/missions/german/squad6"
+msgid "squad6."
+msgstr ""
+
+
+msgctxt "mission/single/missions/german/105mm_lefh18"
+msgid "105mm_lefh18"
+msgstr ""
+
+msgctxt "mission/single/missions/german/120mm_sgrw42"
+msgid "120mm_sgrw42"
+msgstr ""
+
+msgctxt "mission/single/missions/german/150mm_nebelwerfer41"
+msgid "150mm_nebelwerfer41"
+msgstr ""
+
+msgctxt "mission/single/missions/german/150mm_sfh18"
+msgid "150mm_sfh18"
+msgstr ""
+
+msgctxt "mission/single/missions/german/150mm_sig33"
+msgid "150mm_sig33"
+msgstr ""
+
+msgctxt "mission/single/missions/german/20mm_flak30"
+msgid "20mm_flak30"
+msgstr ""
+
+msgctxt "mission/single/missions/german/210mm_morser18"
+msgid "210mm_morser18"
+msgstr ""
+
+msgctxt "mission/single/missions/german/300mm_nebelwerfer42"
+msgid "300mm_nebelwerfer42"
+msgstr ""
+
+msgctxt "mission/single/missions/german/37mm_flak37"
+msgid "37mm_flak37"
+msgstr ""
+
+msgctxt "mission/single/missions/german/37mm_pak36_late"
+msgid "37mm_pak36_late"
+msgstr ""
+
+msgctxt "mission/single/missions/german/47mm_pakt"
+msgid "47mm_pakt"
+msgstr ""
+
+msgctxt "mission/single/missions/german/50mm_pak38_late"
+msgid "50mm_pak38_late"
+msgstr ""
+
+msgctxt "mission/single/missions/german/75mm_legebig18"
+msgid "75mm_legebig18"
+msgstr ""
+
+msgctxt "mission/single/missions/german/75mm_legebig18_snow"
+msgid "75mm_legebig18_snow"
+msgstr ""
+
+msgctxt "mission/single/missions/german/75mm_leig18"
+msgid "75mm_leig18"
+msgstr ""
+
+msgctxt "mission/single/missions/german/75mm_pak40"
+msgid "75mm_pak40"
+msgstr ""
+
+msgctxt "mission/single/missions/german/80mm_sgrw34_rapid"
+msgid "80mm_sgrw34_rapid"
+msgstr ""
+
+msgctxt "mission/single/missions/german/88mm_flak36"
+msgid "88mm_flak36"
+msgstr ""
+
+msgctxt "mission/single/missions/german/bison"
+msgid "bison"
+msgstr ""
+
+msgctxt "mission/single/missions/german/blitz3_6"
+msgid "blitz3_6"
+msgstr ""
+
+msgctxt "mission/single/missions/german/blitz3_6_art_ammo"
+msgid "blitz3_6_art_ammo"
+msgstr ""
+
+msgctxt "mission/single/missions/german/blitz3_6_flak30"
+msgid "blitz3_6_flak30"
+msgstr ""
+
+msgctxt "mission/single/missions/german/blitz3_6_fuel"
+msgid "blitz3_6_fuel"
+msgstr ""
+
+msgctxt "mission/single/missions/german/blitz3_6_radio"
+msgid "blitz3_6_radio"
+msgstr ""
+
+msgctxt "mission/single/missions/german/ferdinand"
+msgid "ferdinand"
+msgstr ""
+
+msgctxt "mission/single/missions/german/grille_m"
+msgid "grille_m"
+msgstr ""
+
+msgctxt "mission/single/missions/german/hetzer"
+msgid "hetzer"
+msgstr ""
+
+msgctxt "mission/single/missions/german/jagdpanther"
+msgid "jagdpanther"
+msgstr ""
+
+msgctxt "mission/single/missions/german/kettenkrad_eng"
+msgid "kettenkrad_eng"
+msgstr ""
+
+msgctxt "mission/single/missions/german/kubelwagen"
+msgid "kubelwagen"
+msgstr ""
+
+msgctxt "mission/single/missions/german/kubelwagen_dak"
+msgid "kubelwagen_dak"
+msgstr ""
+
+msgctxt "mission/single/missions/german/kubelwagen_mg"
+msgid "kubelwagen_mg"
+msgstr ""
+
+msgctxt "mission/single/missions/german/marder2"
+msgid "marder2"
+msgstr ""
+
+msgctxt "mission/single/missions/german/marder3m"
+msgid "marder3m"
+msgstr ""
+
+msgctxt "mission/single/missions/german/opel_maultier"
+msgid "opel_maultier"
+msgstr ""
+
+msgctxt "mission/single/missions/german/p204_f"
+msgid "p204_f"
+msgstr ""
+
+msgctxt "mission/single/missions/german/panzer1b"
+msgid "panzer1b"
+msgstr ""
+
+msgctxt "mission/single/missions/german/panzer1f"
+msgid "panzer1f"
+msgstr ""
+
+msgctxt "mission/single/missions/german/panzer2c"
+msgid "panzer2c"
+msgstr ""
+
+msgctxt "mission/single/missions/german/panzer2f"
+msgid "panzer2f"
+msgstr ""
+
+msgctxt "mission/single/missions/german/panzer2l"
+msgid "panzer2l"
+msgstr ""
+
+msgctxt "mission/single/missions/german/panzer3_flamm"
+msgid "panzer3_flamm"
+msgstr ""
+
+msgctxt "mission/single/missions/german/panzer3e"
+msgid "panzer3e"
+msgstr ""
+
+msgctxt "mission/single/missions/german/panzer3f"
+msgid "panzer3f"
+msgstr ""
+
+msgctxt "mission/single/missions/german/panzer3j"
+msgid "panzer3j"
+msgstr ""
+
+msgctxt "mission/single/missions/german/panzer3j1"
+msgid "panzer3j1"
+msgstr ""
+
+msgctxt "mission/single/missions/german/panzer3l"
+msgid "panzer3l"
+msgstr ""
+
+msgctxt "mission/single/missions/german/panzer3m"
+msgid "panzer3m"
+msgstr ""
+
+msgctxt "mission/single/missions/german/panzer3n"
+msgid "panzer3n"
+msgstr ""
+
+msgctxt "mission/single/missions/german/panzer4d"
+msgid "panzer4d"
+msgstr ""
+
+msgctxt "mission/single/missions/german/panzer4f1"
+msgid "panzer4f1"
+msgstr ""
+
+msgctxt "mission/single/missions/german/panzer4f2"
+msgid "panzer4f2"
+msgstr ""
+
+msgctxt "mission/single/missions/german/panzer4g"
+msgid "panzer4g"
+msgstr ""
+
+msgctxt "mission/single/missions/german/panzer4h"
+msgid "panzer4h"
+msgstr ""
+
+msgctxt "mission/single/missions/german/panzer4j"
+msgid "panzer4j"
+msgstr ""
+
+msgctxt "mission/single/missions/german/panzer5a"
+msgid "panzer5a"
+msgstr ""
+
+msgctxt "mission/single/missions/german/panzer5d"
+msgid "panzer5d"
+msgstr ""
+
+msgctxt "mission/single/missions/german/panzer5g"
+msgid "panzer5g"
+msgstr ""
+
+msgctxt "mission/single/missions/german/panzer731r"
+msgid "panzer731r"
+msgstr ""
+
+msgctxt "mission/single/missions/german/panzer742r"
+msgid "panzer742r"
+msgstr ""
+
+msgctxt "mission/single/missions/german/panzerjager1"
+msgid "panzerjager1"
+msgstr ""
+
+msgctxt "mission/single/missions/german/pz35t"
+msgid "pz35t"
+msgstr ""
+
+msgctxt "mission/single/missions/german/pz38t_a"
+msgid "pz38t_a"
+msgstr ""
+
+msgctxt "mission/single/missions/german/pz38t_f"
+msgid "pz38t_f"
+msgstr ""
+
+msgctxt "mission/single/missions/german/pz38t_g"
+msgid "pz38t_g"
+msgstr ""
+
+msgctxt "mission/single/missions/german/sdkfz10"
+msgid "sdkfz10"
+msgstr ""
+
+msgctxt "mission/single/missions/german/sdkfz10_pak38"
+msgid "sdkfz10_pak38"
+msgstr ""
+
+msgctxt "mission/single/missions/german/sdkfz221"
+msgid "sdkfz221"
+msgstr ""
+
+msgctxt "mission/single/missions/german/sdkfz231"
+msgid "sdkfz231"
+msgstr ""
+
+msgctxt "mission/single/missions/german/sdkfz234_2"
+msgid "sdkfz234_2"
+msgstr ""
+
+msgctxt "mission/single/missions/german/sdkfz251c"
+msgid "sdkfz251c"
+msgstr ""
+
+msgctxt "mission/single/missions/german/sdkfz251c_tarp"
+msgid "sdkfz251c_tarp"
+msgstr ""
+
+msgctxt "mission/single/missions/german/sdkfz8_flak18"
+msgid "sdkfz8_flak18"
+msgstr ""
+
+msgctxt "mission/single/missions/german/sig33b"
+msgid "sig33b"
+msgstr ""
+
+msgctxt "mission/single/missions/german/stug3b"
+msgid "stug3b"
+msgstr ""
+
+msgctxt "mission/single/missions/german/stug3f"
+msgid "stug3f"
+msgstr ""
+
+msgctxt "mission/single/missions/german/stug3g"
+msgid "stug3g"
+msgstr ""
+
+msgctxt "mission/single/missions/german/stug3g_late"
+msgid "stug3g_late"
+msgstr ""
+
+msgctxt "mission/single/missions/german/stuh42"
+msgid "stuh42"
+msgstr ""
+
+msgctxt "mission/single/missions/german/sturmpanzer4"
+msgid "sturmpanzer4"
+msgstr ""
+
+msgctxt "mission/single/missions/german/sturmtiger"
+msgid "sturmtiger"
+msgstr ""
+
+msgctxt "mission/single/missions/german/tiger1e"
+msgid "tiger1e"
+msgstr ""
+
+msgctxt "mission/single/missions/german/tiger1h"
+msgid "tiger1h"
+msgstr ""
+
+msgctxt "mission/single/missions/german/tiger1hunt"
+msgid "tiger1hunt"
+msgstr ""
+
+msgctxt "mission/single/missions/german/tiger2h"
+msgid "tiger2h"
+msgstr ""
+
+msgctxt "mission/single/missions/german/tiger2p"
+msgid "tiger2p"
+msgstr ""
+
+msgctxt "mission/single/missions/german/mg34_lafette"
+msgid "mg34_lafette"
+msgstr ""
+
+msgctxt "mission/single/missions/german/mg42_lafette"
+msgid "mg42_lafette"
+msgstr ""
+
+msgctxt "mission/single/missions/german/80mm_sgrw34_rapid"
+msgid "80mm_sgrw34_rapid"
+msgstr ""
+
+msgctxt "mission/single/missions/german/120mm_sgrw42"
+msgid "120mm_sgrw42"
+msgstr ""
+
+msgctxt "mission/single/missions/german/20mm_flak30"
+msgid "20mm_flak30"
+msgstr ""
+
+msgctxt "mission/single/missions/german/37mm_pak36_late"
+msgid "37mm_pak36_late"
+msgstr ""
+
+msgctxt "mission/single/missions/german/47mm_pakt"
+msgid "47mm_pakt"
+msgstr ""
+
+msgctxt "mission/single/missions/german/50mm_pak38_late"
+msgid "50mm_pak38_late"
+msgstr ""
+
+msgctxt "mission/single/missions/german/37mm_flak37"
+msgid "37mm_flak37"
+msgstr ""
+
+
+msgctxt "mission/single/missions/german/75mm_legebig18"
+msgid "75mm_legebig18"
+msgstr ""
+
+msgctxt "mission/single/missions/german/75mm_legebig18_snow"
+msgid "75mm_legebig18_snow"
+msgstr ""
+
+msgctxt "mission/single/missions/german/75mm_leig18"
+msgid "75mm_leig18"
+msgstr ""
+
+msgctxt "mission/single/missions/german/75mm_pak40"
+msgid "75mm_pak40"
+msgstr ""
+
+msgctxt "mission/single/missions/german/150mm_nebelwerfer41"
+msgid "150mm_nebelwerfer41"
+msgstr ""
+
+msgctxt "mission/single/missions/german/300mm_nebelwerfer42"
+msgid "300mm_nebelwerfer42"
+msgstr ""
+
+msgctxt "mission/single/missions/german/105mm_lefh18"
+msgid "105mm_lefh18"
+msgstr ""
+
+msgctxt "mission/single/missions/german/150mm_sig33"
+msgid "150mm_sig33"
+msgstr ""
+
+msgctxt "mission/single/missions/german/150mm_sfh18"
+msgid "150mm_sfh18"
+msgstr ""
+
+msgctxt "mission/single/missions/german/88mm_flak36"
+msgid "88mm_flak36"
+msgstr ""
+
+msgctxt "mission/single/missions/german/210mm_morser18"
+msgid "210mm_morser18"
+msgstr ""
