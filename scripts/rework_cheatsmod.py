@@ -594,6 +594,24 @@ def make_aimrange_trigger():
 
 
 def make_miner_trigger():
+    # Uses pre-placed hidden template 0x8000 (tag: cheat_infantry-ger1, cheat_infantry_spawn, hidden).
+    # Cloned units do not carry the hidden tag, so excluding {tag hidden} targets only the new clone!
+    sel_clone = """\t\t\t\t\t\t{selector
+\t\t\t\t\t\t\t{source advanced}
+\t\t\t\t\t\t\t{ignore_captured_by_user 0}
+\t\t\t\t\t\t\t{group
+\t\t\t\t\t\t\t\t{select
+\t\t\t\t\t\t\t\t\t{tag
+\t\t\t\t\t\t\t\t\t\t{tag cheat_infantry_spawn}
+\t\t\t\t\t\t\t\t\t}
+\t\t\t\t\t\t\t\t}
+\t\t\t\t\t\t\t\t{exclude
+\t\t\t\t\t\t\t\t\t{tag
+\t\t\t\t\t\t\t\t\t\t{tag hidden}
+\t\t\t\t\t\t\t\t\t}
+\t\t\t\t\t\t\t\t}
+\t\t\t\t\t\t\t}
+\t\t\t\t\t\t}"""
     player_assign = []
     for p in range(8):
         player_assign.append(f"""\t\t\t\t\t{{"if"
@@ -604,16 +622,8 @@ def make_miner_trigger():
 \t\t\t\t\t\t\t{{value {p}}}
 \t\t\t\t\t\t}}
 \t\t\t\t\t\t{{"player"
-\t\t\t\t\t\t\t{{selector
-\t\t\t\t\t\t\t\t{{source advanced}}
-\t\t\t\t\t\t\t\t{{group
-\t\t\t\t\t\t\t\t\t{{select
-\t\t\t\t\t\t\t\t\t\t{{tag
-\t\t\t\t\t\t\t\t\t\t\t{{tag cheat_fast_miner}}
-\t\t\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t}}
+{sel_clone.replace(chr(9)*6, chr(9)*7)}
+\t\t\t\t\t\t\t{{operation set}}
 \t\t\t\t\t\t\t{{player "{p}"}}
 \t\t\t\t\t\t}}
 \t\t\t\t\t}}""")
@@ -626,70 +636,38 @@ def make_miner_trigger():
 \t\t\t\t\t}}
 \t\t\t\t}}
 \t\t\t\t{{actions
-\t\t\t\t\t{{"spawn"
-\t\t\t\t\t\t{{entity "mp/ger/early/elite_rifle"}}
+\t\t\t\t\t{{"actor_to_waypoint"
+\t\t\t\t\t\t{{selector
+\t\t\t\t\t\t\t{{ignore_captured_by_user 0}}
+\t\t\t\t\t\t\t{{tag cheat_infantry-ger1}}
+\t\t\t\t\t\t}}
 \t\t\t\t\t\t{{waypoint "30001"}}
-\t\t\t\t\t\t{{tag cheat_fast_miner}}
+\t\t\t\t\t\t{{clone}}
+\t\t\t\t\t\t{{approach teleport}}
 \t\t\t\t\t}}
 \t\t\t\t\t{{"delay"
 \t\t\t\t\t\t{{time 0.1}}
 \t\t\t\t\t}}
 \t\t\t\t\t{{"inventory"
-\t\t\t\t\t\t{{selector
-\t\t\t\t\t\t\t{{source advanced}}
-\t\t\t\t\t\t\t{{group
-\t\t\t\t\t\t\t\t{{select
-\t\t\t\t\t\t\t\t\t{{tag
-\t\t\t\t\t\t\t\t\t\t{{tag cheat_fast_miner}}
-\t\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t}}
+{sel_clone}
 \t\t\t\t\t\t{{action add}}
 \t\t\t\t\t\t{{item "mine m1a1_cheat"}}
 \t\t\t\t\t\t{{amount 40}}
 \t\t\t\t\t}}
 \t\t\t\t\t{{"inventory"
-\t\t\t\t\t\t{{selector
-\t\t\t\t\t\t\t{{source advanced}}
-\t\t\t\t\t\t\t{{group
-\t\t\t\t\t\t\t\t{{select
-\t\t\t\t\t\t\t\t\t{{tag
-\t\t\t\t\t\t\t\t\t\t{{tag cheat_fast_miner}}
-\t\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t}}
+{sel_clone}
 \t\t\t\t\t\t{{action add}}
 \t\t\t\t\t\t{{item "mine s_cheat"}}
 \t\t\t\t\t\t{{amount 40}}
 \t\t\t\t\t}}
 \t\t\t\t\t{{"inventory"
-\t\t\t\t\t\t{{selector
-\t\t\t\t\t\t\t{{source advanced}}
-\t\t\t\t\t\t\t{{group
-\t\t\t\t\t\t\t\t{{select
-\t\t\t\t\t\t\t\t\t{{tag
-\t\t\t\t\t\t\t\t\t\t{{tag cheat_fast_miner}}
-\t\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t}}
+{sel_clone}
 \t\t\t\t\t\t{{action add}}
 \t\t\t\t\t\t{{item "mine_detector"}}
 \t\t\t\t\t\t{{amount 1}}
 \t\t\t\t\t}}
 \t\t\t\t\t{{"actor_state"
-\t\t\t\t\t\t{{selector
-\t\t\t\t\t\t\t{{source advanced}}
-\t\t\t\t\t\t\t{{group
-\t\t\t\t\t\t\t\t{{select
-\t\t\t\t\t\t\t\t\t{{tag
-\t\t\t\t\t\t\t\t\t\t{{tag cheat_fast_miner}}
-\t\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t}}
+{sel_clone}
 \t\t\t\t\t\t{{control user}}
 \t\t\t\t\t\t{{human
 \t\t\t\t\t\t\t{{veterancy 8}}
@@ -698,18 +676,9 @@ def make_miner_trigger():
 \t\t\t\t\t}}
 {chr(10).join(player_assign)}
 \t\t\t\t\t{{"entity_state"
-\t\t\t\t\t\t{{selector
-\t\t\t\t\t\t\t{{source advanced}}
-\t\t\t\t\t\t\t{{group
-\t\t\t\t\t\t\t\t{{select
-\t\t\t\t\t\t\t\t\t{{tag
-\t\t\t\t\t\t\t\t\t\t{{tag cheat_fast_miner}}
-\t\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t}}
+{sel_clone}
 \t\t\t\t\t\t{{tag_add cheat_delete}}
-\t\t\t\t\t\t{{tag_remove cheat_fast_miner}}
+\t\t\t\t\t\t{{tag_remove cheat_infantry_spawn}}
 \t\t\t\t\t}}
 \t\t\t\t\t{{"event"
 \t\t\t\t\t\t{{event "cheats/fast_miner"}}
@@ -852,6 +821,7 @@ def patch_mi_content(raw_txt, label):
 \t\t\t\t{delay 0}
 \t\t\t\t{eventStart "cheat_click"}
 \t\t\t\t{eventEnd "cheats/fast_miner"}
+\t\t\t\t{waypoint "30001"}
 \t\t\t}"""
         txt = txt.replace(
             '\t\t\t{"cheat_mine"\n',
