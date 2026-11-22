@@ -31,20 +31,24 @@ def rewrite_localization():
         "c_setplayer_1": "Active Player set to: <e(shadow)><c(00d319)>2</c></e>",
         "c_setplayer_2": "Active Player set to: <e(shadow)><c(f2c200)>3</c></e>",
         "c_setplayer_3": "Active Player set to: <e(shadow)><c(ffffff)>0</c></e>",
+        "c_setplayer_4": "Active Player set to: <e(shadow)><c(0000ff)>4</c></e>",
+        "c_setplayer_5": "Active Player set to: <e(shadow)><c(ff0000)>5</c></e>",
+        "c_setplayer_6": "Active Player set to: <e(shadow)><c(00d319)>6</c></e>",
+        "c_setplayer_7": "Active Player set to: <e(shadow)><c(f2c200)>7</c></e>",
         "c_weakenemy_0": "Enabled: Instakill Enemies (Infantry & Vehicles)",
         "cheatversion": "<s(25)><c(204 204 204)>CheatsMod <c(40c040)>2.6 Reworked<c(204 204 204)><s(8)>",
         "cheatversion1": "<c(40c040)>v2.6 Reworked",
         "c_deactivated_0": "Cheat Deactivated",
         "cheats_option_select": "Cheat Settings:",
         "Autoassign": "<e(shadow)><c(f2c200)>Auto-Assign</c></e>",
-        "Set to player0": "Override Player 0 (All cheats already auto-target human units; click to cycle)",
-        "Set to player1": "Override Player 1 (All cheats already auto-target human units; click to cycle)",
-        "Set to player2": "Override Player 2 (All cheats already auto-target human units; click to cycle)",
-        "Set to player3": "Override Player 3 (All cheats already auto-target human units; click to cycle)",
-        "Set to player4": "Override Player 4 (All cheats already auto-target human units; click to cycle)",
-        "Set to player5": "Override Player 5 (All cheats already auto-target human units; click to cycle)",
-        "Set to player6": "Override Player 6 (All cheats already auto-target human units; click to cycle)",
-        "Set to player7": "Override Player 7 (All cheats already auto-target human units; click to cycle)",
+        "Set to player0": "Cheats & spawns target Player 0 (auto-detected; click to switch to Player 1)",
+        "Set to player1": "Cheats & spawns target Player 1 (auto-detected; click to switch to Player 2)",
+        "Set to player2": "Cheats & spawns target Player 2 (auto-detected; click to switch to Player 3)",
+        "Set to player3": "Cheats & spawns target Player 3 (auto-detected; click to switch to Player 4)",
+        "Set to player4": "Cheats & spawns target Player 4 (auto-detected; click to switch to Player 5)",
+        "Set to player5": "Cheats & spawns target Player 5 (auto-detected; click to switch to Player 6)",
+        "Set to player6": "Cheats & spawns target Player 6 (auto-detected; click to switch to Player 7)",
+        "Set to player7": "Cheats & spawns target Player 7 (auto-detected; click to switch to Player 0)",
         "Deploy mines": "AT Mines (x8)",
         "Lay a mine field": "Click on the ground to drop 8 armed Anti-Tank mines",
         "Fast Miner": "Fast Mine Engineer",
@@ -74,14 +78,18 @@ def rewrite_localization():
         else:
             out.append(line)
 
-    # Insert Fast Miner + missing player4..7 tags before final '}'
+    # Insert Fast Miner + missing player4..7 & c_setplayer_4..7 tags before final '}'
     extra_tags = [
         '\t{"Fast Miner" "Fast Mine Engineer"}',
         '\t{"Fast Miner hint" "Click on ground to spawn Engineer with 40 AT + 40 AP instant (0.1s) mines. Hold Shift to queue!"}',
-        '\t{"Set to player4" "Override Player 4 (All cheats already auto-target human units; click to cycle)"}',
-        '\t{"Set to player5" "Override Player 5 (All cheats already auto-target human units; click to cycle)"}',
-        '\t{"Set to player6" "Override Player 6 (All cheats already auto-target human units; click to cycle)"}',
-        '\t{"Set to player7" "Override Player 7 (All cheats already auto-target human units; click to cycle)"}',
+        '\t{"Set to player4" "Cheats & spawns target Player 4 (auto-detected; click to switch to Player 5)"}',
+        '\t{"Set to player5" "Cheats & spawns target Player 5 (auto-detected; click to switch to Player 6)"}',
+        '\t{"Set to player6" "Cheats & spawns target Player 6 (auto-detected; click to switch to Player 7)"}',
+        '\t{"Set to player7" "Cheats & spawns target Player 7 (auto-detected; click to switch to Player 0)"}',
+        '\t{"c_setplayer_4" "Active Player set to: <e(shadow)><c(0000ff)>4</c></e>"}',
+        '\t{"c_setplayer_5" "Active Player set to: <e(shadow)><c(ff0000)>5</c></e>"}',
+        '\t{"c_setplayer_6" "Active Player set to: <e(shadow)><c(00d319)>6</c></e>"}',
+        '\t{"c_setplayer_7" "Active Player set to: <e(shadow)><c(f2c200)>7</c></e>"}',
     ]
     existing = "\n".join(out)
     for idx in range(len(out) - 1, -1, -1):
@@ -341,11 +349,13 @@ def make_addexp_trigger():
 
 
 def make_auto_detect_player_trigger():
-    """Polls every 1.5s until the human player slot is identified, then locks cheat_options-player$.
+    """Polls every 1.0s until the human player slot is identified, then locks cheat_options-player$ and cheat_enemyspawn$.
 
     Priority 1 (Conquest native): read id_1st_player$ (set by GoH Conquest Lua OnGameStart at t=0s).
-    Priority 2 (SP / Skirmish / older Conquest mods like Valour): check user_control entities in
-    ascending slot order 0..7 while explicitly excluding Conquest AI slots (enemyid$, id_1st_enemy$, id_defenderbot$).
+    Priority 2 (SP / Skirmish / older Conquest mods): check user_control entities in slot order
+    1..7 then 0 (checking 1..7 first so neutral slot-0 entities never mask a Conquest/Skirmish player),
+    using a valid advanced selector excluding hidden/cheat_delete/inactive/dead template entities,
+    and explicitly excluding Conquest AI slots (enemyid$, id_1st_enemy$, id_defenderbot$).
     """
     conquest_cases = []
     for p in range(1, 8):
@@ -362,6 +372,11 @@ def make_auto_detect_player_trigger():
 \t\t\t\t\t\t\t\t{{value {p}}}
 \t\t\t\t\t\t\t}}
 \t\t\t\t\t\t\t{{"set_i"
+\t\t\t\t\t\t\t\t{{var "cheat_enemyspawn$"}}
+\t\t\t\t\t\t\t\t{{op "="}}
+\t\t\t\t\t\t\t\t{{value {p}}}
+\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t{{"set_i"
 \t\t\t\t\t\t\t\t{{var "cheat_player_detected$"}}
 \t\t\t\t\t\t\t\t{{op "="}}
 \t\t\t\t\t\t\t\t{{value 1}}
@@ -369,9 +384,14 @@ def make_auto_detect_player_trigger():
 \t\t\t\t\t\t}}""")
 
     fallback_checks = []
-    for p in range(8):
+    for p in (1, 2, 3, 4, 5, 6, 7, 0):
         set_block = f"""\t\t\t\t\t\t\t\t{{"set_i"
 \t\t\t\t\t\t\t\t\t{{var "cheat_options-player$"}}
+\t\t\t\t\t\t\t\t\t{{op "="}}
+\t\t\t\t\t\t\t\t\t{{value {p}}}
+\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t{{"set_i"
+\t\t\t\t\t\t\t\t\t{{var "cheat_enemyspawn$"}}
 \t\t\t\t\t\t\t\t\t{{op "="}}
 \t\t\t\t\t\t\t\t\t{{value {p}}}
 \t\t\t\t\t\t\t\t}}
@@ -410,6 +430,11 @@ def make_auto_detect_player_trigger():
 \t\t\t\t\t\t\t\t\t\t\t\t{{value {p}}}
 \t\t\t\t\t\t\t\t\t\t\t}}
 \t\t\t\t\t\t\t\t\t\t\t{{"set_i"
+\t\t\t\t\t\t\t\t\t\t\t\t{{var "cheat_enemyspawn$"}}
+\t\t\t\t\t\t\t\t\t\t\t\t{{op "="}}
+\t\t\t\t\t\t\t\t\t\t\t\t{{value {p}}}
+\t\t\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t\t\t\t{{"set_i"
 \t\t\t\t\t\t\t\t\t\t\t\t{{var "cheat_player_detected$"}}
 \t\t\t\t\t\t\t\t\t\t\t\t{{op "="}}
 \t\t\t\t\t\t\t\t\t\t\t\t{{value 1}}
@@ -428,10 +453,35 @@ def make_auto_detect_player_trigger():
 \t\t\t\t\t\t\t{{condition
 \t\t\t\t\t\t\t\t{{type entities}}
 \t\t\t\t\t\t\t\t{{selector
+\t\t\t\t\t\t\t\t\t{{source advanced}}
 \t\t\t\t\t\t\t\t\t{{ignore_captured_by_user 0}}
-\t\t\t\t\t\t\t\t\t{{player "{p}"}}
-\t\t\t\t\t\t\t\t\t{{state user_control}}
-\t\t\t\t\t\t\t\t\t{{state "not dead"}}
+\t\t\t\t\t\t\t\t\t{{group
+\t\t\t\t\t\t\t\t\t\t{{include
+\t\t\t\t\t\t\t\t\t\t\t{{player
+\t\t\t\t\t\t\t\t\t\t\t\t{{player "{p}"}}
+\t\t\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t\t\t\t{{state
+\t\t\t\t\t\t\t\t\t\t\t\t{{state operatable}}
+\t\t\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t\t\t\t{{state
+\t\t\t\t\t\t\t\t\t\t\t\t{{state user_control}}
+\t\t\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t\t\t{{exclude
+\t\t\t\t\t\t\t\t\t\t\t{{tag
+\t\t\t\t\t\t\t\t\t\t\t\t{{tag hidden}}
+\t\t\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t\t\t\t{{tag
+\t\t\t\t\t\t\t\t\t\t\t\t{{tag cheat_delete}}
+\t\t\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t\t\t\t{{state
+\t\t\t\t\t\t\t\t\t\t\t\t{{state inactive}}
+\t\t\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t\t\t\t{{state
+\t\t\t\t\t\t\t\t\t\t\t\t{{state dead}}
+\t\t\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t\t}}
 \t\t\t\t\t\t\t\t}}
 \t\t\t\t\t\t\t}}
 {inner_guard}
@@ -450,7 +500,7 @@ def make_auto_detect_player_trigger():
 \t\t\t\t}}
 \t\t\t\t{{actions
 \t\t\t\t\t{{"delay"
-\t\t\t\t\t\t{{time 1.5}}
+\t\t\t\t\t\t{{time 1.0}}
 \t\t\t\t\t}}
 \t\t\t\t\t{{"switch"
 {chr(10).join(conquest_cases)}
@@ -458,6 +508,81 @@ def make_auto_detect_player_trigger():
 {chr(10).join(fallback_checks)}
 \t\t\t\t\t{{"trigger"
 \t\t\t\t\t\t{{name "cheats/auto_detect_player"}}
+\t\t\t\t\t}}
+\t\t\t\t}}
+\t\t\t}}"""
+
+
+def make_options_player_trigger():
+    """Cleanly cycles cheat_options-player$ AND syncs cheat_enemyspawn$, clearing old godmode/aimrange tags."""
+    cases = []
+    for p in range(8):
+        nxt = (p + 1) % 8
+        talk_idx = nxt - 1 if nxt in (1, 2, 3) else (3 if nxt == 0 else nxt)
+        cases.append(f"""\t\t\t\t\t\t{{"case"
+\t\t\t\t\t\t\t{{condition
+\t\t\t\t\t\t\t\t{{type cmp_i}}
+\t\t\t\t\t\t\t\t{{var "cheat_options-player$"}}
+\t\t\t\t\t\t\t\t{{op "=="}}
+\t\t\t\t\t\t\t\t{{value {p}}}
+\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t{{"set_i"
+\t\t\t\t\t\t\t\t{{var "cheat_options-player$"}}
+\t\t\t\t\t\t\t\t{{op "="}}
+\t\t\t\t\t\t\t\t{{value {nxt}}}
+\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t{{"set_i"
+\t\t\t\t\t\t\t\t{{var "cheat_enemyspawn$"}}
+\t\t\t\t\t\t\t\t{{op "="}}
+\t\t\t\t\t\t\t\t{{value {nxt}}}
+\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t{{"talk"
+\t\t\t\t\t\t\t\t{{selector
+\t\t\t\t\t\t\t\t\t{{ignore_captured_by_user 0}}
+\t\t\t\t\t\t\t\t\t{{tag cheat_say}}
+\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t{{text "mission/singlecheats/c_setplayer_{talk_idx}"}}
+\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t}}""")
+    return f"""\t\t\t{{"cheats/options/player"
+\t\t\t\t{{condition
+\t\t\t\t\t{{terms
+\t\t\t\t\t\t{{"1.event"
+\t\t\t\t\t\t\t{{id "cheats/settings/player"}}
+\t\t\t\t\t\t}}
+\t\t\t\t\t}}
+\t\t\t\t}}
+\t\t\t\t{{actions
+\t\t\t\t\t{{"set_i"
+\t\t\t\t\t\t{{var "cheat_player_detected$"}}
+\t\t\t\t\t\t{{op "="}}
+\t\t\t\t\t\t{{value 1}}
+\t\t\t\t\t}}
+\t\t\t\t\t{{"entity_state"
+\t\t\t\t\t\t{{selector
+\t\t\t\t\t\t\t{{ignore_captured_by_user 0}}
+\t\t\t\t\t\t\t{{tag cheat_godmode}}
+\t\t\t\t\t\t}}
+\t\t\t\t\t\t{{impregnability disabled}}
+\t\t\t\t\t\t{{tag_remove cheat_godmode}}
+\t\t\t\t\t}}
+\t\t\t\t\t{{"entity_state"
+\t\t\t\t\t\t{{selector
+\t\t\t\t\t\t\t{{ignore_captured_by_user 0}}
+\t\t\t\t\t\t\t{{tag cheat_aimrange}}
+\t\t\t\t\t\t}}
+\t\t\t\t\t\t{{tag_remove cheat_aimrange}}
+\t\t\t\t\t}}
+\t\t\t\t\t{{"switch"
+{chr(10).join(cases)}
+\t\t\t\t\t}}
+\t\t\t\t\t{{"event"
+\t\t\t\t\t\t{{event "cheats/settings/player"}}
+\t\t\t\t\t\t{{mode reset}}
+\t\t\t\t\t\t{{delay 0}}
+\t\t\t\t\t}}
+\t\t\t\t\t{{"trigger"
+\t\t\t\t\t\t{{name "cheats/options/player"}}
 \t\t\t\t\t}}
 \t\t\t\t}}
 \t\t\t}}"""
@@ -1176,12 +1301,37 @@ def generate_custom_button_icons():
         sup_comp.alpha_composite(ac_s, (1, 3))
         sup_comp.alpha_composite(xhair_gold.resize((20, 20), Image.Resampling.LANCZOS), (42, 5))
 
+        manual_ctrl = load_img(z_scene, "scene/panel_control/manual_control_00.tga")
+        move_raw = load_img(z_scene, "scene/panel_control/move_00.tga").crop((13, 13, 51, 51))
+        mpx = move_raw.load()
+        for my in range(move_raw.height):
+            for mx in range(move_raw.width):
+                mr, mg, mb, _ = mpx[mx, my]
+                mlum = 0.3 * mr + 0.59 * mg + 0.11 * mb
+                if mlum < 92:
+                    mpx[mx, my] = (mr, mg, mb, 0)
+                else:
+                    ma = min(255, int((mlum - 92) * 5.5))
+                    mpx[mx, my] = (min(255, int(mr * 1.2)), min(255, int(mg * 1.2)), min(255, int(mb * 1.2)), ma)
+        if move_raw.getbbox():
+            move_raw = move_raw.crop(move_raw.getbbox())
+        gear_tight = gear.crop(gear.getbbox()) if gear.getbbox() else gear
+        ai_comp = Image.new("RGBA", (62, 34), (0, 0, 0, 0))
+        ai_sol = tint_rgba(move_raw, (238, 224, 195))
+        ai_sol.thumbnail((32, 32), Image.Resampling.LANCZOS)
+        ai_gear = tint_rgba(gear_tight, (240, 175, 65))
+        ai_gear.thumbnail((24, 24), Image.Resampling.LANCZOS)
+        ai_comp.alpha_composite(ai_sol, (4, 1))
+        ai_comp.alpha_composite(ai_gear, (34, 5))
+
         icon_specs = {
             "repair": (False, wrench, 52, 33, 28, 46),
             "destroyarmor": (False, da_comp, 52, 33, 30, 62),
             "veterancy": (False, rank8_clean, 52, 33, 27, 56),
             "win": (False, medal, 52, 33, 28, 34),
             "fastminer": (False, fm_comp, 52, 33, 30, 66),
+            "control_user": (False, manual_ctrl, 52, 33, 28, 36),
+            "control_ai": (False, ai_comp, 52, 33, 29, 58),
             "menu_spawn": (True, veh_cut, 44, 33, 29, 58),
             "menu_cheats": (True, star, 45, 33, 29, 44),
             "menu_settings": (True, gear, 45, 33, 26, 36),
@@ -1317,8 +1467,8 @@ def patch_mi_content(raw_txt, label):
         "cheat_ammodrop": ('"Paradrop Ammo"', None, '"Click on the ground to paradrop a supply crate at cursor"'),
         "cheat_delete": ('"Clear Cheated"', None, '"Delete all units & objects spawned by CheatsMod from the map"'),
         "cheat_return": ('"Back"', None, '"Return to previous menu"'),
-        "changecn_user": ('"Side: Ally"', None, '"Spawning units for your own team (click to switch to Enemy AI)"'),
-        "changecn_ai": ('"Side: Enemy AI"', None, '"Spawning units for Enemy AI (click to switch to Ally)"'),
+        "changecn_user": ('"Control: Manual"', '"whitesnoop/cheats/control_user"', '"Spawned units are under your manual control (click to switch to autonomous AI)"'),
+        "changecn_ai": ('"Control: AI"', '"whitesnoop/cheats/control_ai"', '"Spawned units move and fight autonomously under AI control (click to switch to Manual)"'),
         "cheat_options-planeheight1": ('"Plane Height: 15m"', None, '"Aircraft spawn altitude: 15m (click to cycle 15m / 20m / 25m)"'),
         "cheat_options-planeheight2": ('"Plane Height: 20m"', None, '"Aircraft spawn altitude: 20m (click to cycle 15m / 20m / 25m)"'),
         "cheat_options-planeheight3": ('"Plane Height: 25m"', None, '"Aircraft spawn altitude: 25m (click to cycle 15m / 20m / 25m)"'),
@@ -1336,14 +1486,29 @@ def patch_mi_content(raw_txt, label):
         "changecountry_rus": ('""', None, '"Switch spawn roster to USSR"'),
         "changecountry_jap": ('""', None, '"Switch spawn roster to Other / Special"'),
     }
+    for slot_idx in range(1, 9):
+        p_num = slot_idx if slot_idx < 8 else 0
+        nxt_num = (p_num + 1) % 8
+        button_updates[f"cheat_spawnasplayer{slot_idx}"] = (
+            None,
+            None,
+            f'"Spawned units belong to Player {p_num} (auto-detected; click to switch to Player {nxt_num})"',
+        )
+        button_updates[f"cheat_options-player{slot_idx}"] = (
+            None,
+            None,
+            f'"Cheats & spawns target Player {p_num} (auto-detected; click to switch to Player {nxt_num})"',
+        )
+
     for btn_id, (new_text, new_img, new_hint) in button_updates.items():
         bpat = re.compile(
-            r'(\t\t\t\{"' + re.escape(btn_id) + r'"\n\t\t\t\t\{state hidden\}\n)\t\t\t\t\{text [^\n]+\}\n(\t\t\t\t\{image [^\n]+\}\n)\t\t\t\t\{hint [^\n]+\}\n'
+            r'(\t\t\t\{"' + re.escape(btn_id) + r'"\n\t\t\t\t\{state hidden\}\n)(\t\t\t\t\{text [^\n]+\}\n)(\t\t\t\t\{image [^\n]+\}\n)\t\t\t\t\{hint [^\n]+\}\n'
         )
         m = bpat.search(txt)
         if m:
-            img_line = f'\t\t\t\t{{image {new_img}}}\n' if new_img else m.group(2)
-            rep = f'{m.group(1)}\t\t\t\t{{text {new_text}}}\n{img_line}\t\t\t\t{{hint {new_hint}}}\n'
+            txt_line = f'\t\t\t\t{{text {new_text}}}\n' if new_text is not None else m.group(2)
+            img_line = f'\t\t\t\t{{image {new_img}}}\n' if new_img else m.group(3)
+            rep = f'{m.group(1)}{txt_line}{img_line}\t\t\t\t{{hint {new_hint}}}\n'
             txt = txt[:m.start()] + rep + txt[m.end():]
 
     # 5. Show & hide cheat_miner in Support menu (20:supportcheats)
@@ -1398,13 +1563,20 @@ def patch_mi_content(raw_txt, label):
         txt = txt.replace(swapped_aim_show, correct_aim_show, 1)
     assert correct_aim_show in txt, f"Failed to verify normalized aimrange show block in {label}"
 
-    # 7. Initialize cheat_options-player$ = 0 and explicitly reset one-shot events in cheats/set/vars
-    if '{var "cheat_options-player$"}' not in txt[:16000]:
-        txt = txt.replace(
-            '\t\t\t\t\t{"set_i"\n\t\t\t\t\t\t{var "cheat_infammo$"}\n\t\t\t\t\t\t{op "="}\n\t\t\t\t\t\t{value 0}\n\t\t\t\t\t}',
-            '\t\t\t\t\t{"set_i"\n\t\t\t\t\t\t{var "cheat_infammo$"}\n\t\t\t\t\t\t{op "="}\n\t\t\t\t\t\t{value 0}\n\t\t\t\t\t}\n\t\t\t\t\t{"set_i"\n\t\t\t\t\t\t{var "cheat_options-player$"}\n\t\t\t\t\t\t{op "="}\n\t\t\t\t\t\t{value 0}\n\t\t\t\t\t}\n\t\t\t\t\t{"set_i"\n\t\t\t\t\t\t{var "cheat_player_detected$"}\n\t\t\t\t\t\t{op "="}\n\t\t\t\t\t\t{value 0}\n\t\t\t\t\t}\n\t\t\t\t\t{"event"\n\t\t\t\t\t\t{event "cheats/addexp"}\n\t\t\t\t\t\t{mode reset}\n\t\t\t\t\t\t{delay 0}\n\t\t\t\t\t}\n\t\t\t\t\t{"event"\n\t\t\t\t\t\t{event "cheats/conquest_win"}\n\t\t\t\t\t\t{mode reset}\n\t\t\t\t\t\t{delay 0}\n\t\t\t\t\t}\n\t\t\t\t\t{"event"\n\t\t\t\t\t\t{event "cheat_repair"}\n\t\t\t\t\t\t{mode reset}\n\t\t\t\t\t\t{delay 0}\n\t\t\t\t\t}\n\t\t\t\t\t{"event"\n\t\t\t\t\t\t{event "cheats/destroyarmor"}\n\t\t\t\t\t\t{mode reset}\n\t\t\t\t\t\t{delay 0}\n\t\t\t\t\t}\n\t\t\t\t\t{"event"\n\t\t\t\t\t\t{event "cheats/fast_miner"}\n\t\t\t\t\t\t{mode reset}\n\t\t\t\t\t\t{delay 0}\n\t\t\t\t\t}',
-            1,
-        )
+    # 7. Initialize cheat_options-player$ = 0 and explicitly reset one-shot events in cheats/set/vars idempotently
+    vars_anchor = '\t\t\t\t\t{"set_i"\n\t\t\t\t\t\t{var "cheat_infammo$"}\n\t\t\t\t\t\t{op "="}\n\t\t\t\t\t\t{value 0}\n\t\t\t\t\t}'
+    vars_init_blk = (
+        '\n\t\t\t\t\t{"set_i"\n\t\t\t\t\t\t{var "cheat_options-player$"}\n\t\t\t\t\t\t{op "="}\n\t\t\t\t\t\t{value 0}\n\t\t\t\t\t}'
+        '\n\t\t\t\t\t{"set_i"\n\t\t\t\t\t\t{var "cheat_player_detected$"}\n\t\t\t\t\t\t{op "="}\n\t\t\t\t\t\t{value 0}\n\t\t\t\t\t}'
+        '\n\t\t\t\t\t{"event"\n\t\t\t\t\t\t{event "cheats/addexp"}\n\t\t\t\t\t\t{mode reset}\n\t\t\t\t\t\t{delay 0}\n\t\t\t\t\t}'
+        '\n\t\t\t\t\t{"event"\n\t\t\t\t\t\t{event "cheats/conquest_win"}\n\t\t\t\t\t\t{mode reset}\n\t\t\t\t\t\t{delay 0}\n\t\t\t\t\t}'
+        '\n\t\t\t\t\t{"event"\n\t\t\t\t\t\t{event "cheat_repair"}\n\t\t\t\t\t\t{mode reset}\n\t\t\t\t\t\t{delay 0}\n\t\t\t\t\t}'
+        '\n\t\t\t\t\t{"event"\n\t\t\t\t\t\t{event "cheats/destroyarmor"}\n\t\t\t\t\t\t{mode reset}\n\t\t\t\t\t\t{delay 0}\n\t\t\t\t\t}'
+        '\n\t\t\t\t\t{"event"\n\t\t\t\t\t\t{event "cheats/fast_miner"}\n\t\t\t\t\t\t{mode reset}\n\t\t\t\t\t\t{delay 0}\n\t\t\t\t\t}'
+    )
+    txt = txt.replace(vars_init_blk, "")
+    assert vars_anchor in txt, f"cheats/set/vars anchor not found in {label}"
+    txt = txt.replace(vars_anchor, vars_anchor + vars_init_blk, 1)
 
     # 8. Replace broken triggers idempotently + add auto_detect_player + conquest_win + fast_miner
     for dup_hdr in ('{"cheats/auto_detect_player"', '{"cheats/active/repair"', '{"cheats/active/conquest_win"', '{"cheats/units/fast_miner"'):
@@ -1425,12 +1597,60 @@ def patch_mi_content(raw_txt, label):
     txt, ok_gtog = replace_trigger_block(txt, '{"cheats/godmode"', god_toggle)
     assert ok_gon and ok_goff and ok_gtog, f"Godmode trigger replace failed in {label}: {ok_gon},{ok_goff},{ok_gtog}"
 
-    # When user manually switches Player slot via cheats/options/player, lock auto-detect and strip active godmode/aimrange from old slot
-    player_opt_hdr = '{"cheats/options/player"\n\t\t\t\t{condition\n\t\t\t\t\t{terms\n\t\t\t\t\t\t{"1.event"\n\t\t\t\t\t\t\t{id "cheats/settings/player"}\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t\t{actions\n'
-    player_opt_cleanup = '\t\t\t\t\t{"set_i"\n\t\t\t\t\t\t{var "cheat_player_detected$"}\n\t\t\t\t\t\t{op "="}\n\t\t\t\t\t\t{value 1}\n\t\t\t\t\t}\n\t\t\t\t\t{"entity_state"\n\t\t\t\t\t\t{selector\n\t\t\t\t\t\t\t{ignore_captured_by_user 0}\n\t\t\t\t\t\t\t{tag cheat_godmode}\n\t\t\t\t\t\t}\n\t\t\t\t\t\t{impregnability disabled}\n\t\t\t\t\t\t{tag_remove cheat_godmode}\n\t\t\t\t\t}\n\t\t\t\t\t{"entity_state"\n\t\t\t\t\t\t{selector\n\t\t\t\t\t\t\t{ignore_captured_by_user 0}\n\t\t\t\t\t\t\t{tag cheat_aimrange}\n\t\t\t\t\t\t}\n\t\t\t\t\t\t{tag_remove cheat_aimrange}\n\t\t\t\t\t}\n'
-    assert player_opt_hdr in txt, f"cheats/options/player header not found in {label}"
-    if player_opt_cleanup not in txt:
-        txt = txt.replace(player_opt_hdr, player_opt_hdr + player_opt_cleanup, 1)
+    # Sync both cheat_options-player$ and cheat_enemyspawn$ when cycling Player slot in Settings
+    txt, ok_popt = replace_trigger_block(txt, '{"cheats/options/player"', make_options_player_trigger())
+    assert ok_popt, f"cheats/options/player replace failed in {label}"
+
+    # Returning to main menu must NOT wipe cheat_enemyspawn$ back to Player 0
+    whitesnoop_clean = """\t\t\t{"cheat_menu/show/0:whitesnoop"
+\t\t\t\t{condition
+\t\t\t\t\t{terms
+\t\t\t\t\t\t{"2.cmp_i"
+\t\t\t\t\t\t\t{var "cheatmenu$"}
+\t\t\t\t\t\t\t{op "=="}
+\t\t\t\t\t\t\t{value 0}
+\t\t\t\t\t\t}
+\t\t\t\t\t}
+\t\t\t\t}
+\t\t\t\t{actions
+\t\t\t\t\t{"reinforcement"
+\t\t\t\t\t\t{operation hide}
+\t\t\t\t\t\t{name cheat_return}
+\t\t\t\t\t}
+\t\t\t\t\t{"reinforcement"
+\t\t\t\t\t\t{operation show}
+\t\t\t\t\t\t{name cheats}
+\t\t\t\t\t}
+\t\t\t\t\t{"trigger"
+\t\t\t\t\t\t{name "cheat_menu/show/0:whitesnoop"}
+\t\t\t\t\t}
+\t\t\t\t}
+\t\t\t}"""
+    txt, ok_ws = replace_trigger_block(txt, '{"cheat_menu/show/0:whitesnoop"', whitesnoop_clean)
+    assert ok_ws, f"cheat_menu/show/0:whitesnoop replace failed in {label}"
+
+    # Fix {functions} cheat_reinf_inf & cheat_reinf_after: freshly cloned infantry carry cheat_infantry_spawn, not cheat_enemyspawn
+    for fn_hdr in ('\t\t\t{"cheat_reinf_inf"', '\t\t\t{"cheat_reinf_after"'):
+        fn_start = txt.find(fn_hdr)
+        assert fn_start != -1, f"Missing function {fn_hdr.strip()} in {label}"
+        fn_depth = 0
+        fn_end = fn_start
+        for fn_i in range(fn_start, len(txt)):
+            if txt[fn_i] == "{":
+                fn_depth += 1
+            elif txt[fn_i] == "}":
+                fn_depth -= 1
+                if fn_depth == 0:
+                    fn_end = fn_i + 1
+                    break
+        fn_blk = txt[fn_start:fn_end]
+        fn_blk_fixed = re.sub(
+            r'(\{"player"\n\t+\{selector\n\t+\{source advanced\}\n\t+\{group\n\t+\{select\n\t+\{tag\n\t+\{tag )cheat_enemyspawn(\}\n)',
+            r'\1cheat_infantry_spawn\2',
+            fn_blk,
+        )
+        assert fn_blk_fixed.count("{tag cheat_infantry_spawn}") >= 8, f"Expected >=8 cheat_infantry_spawn in {fn_hdr.strip()}"
+        txt = txt[:fn_start] + fn_blk_fixed + txt[fn_end:]
 
     # 9. Upgrade cheats/units/mine and cheats/units/mine_ap to spawn 8 armed mines per click
     # Fix waypoint buttons to use eventEnd (fires AFTER placing waypoint 30001 on the ground!)
