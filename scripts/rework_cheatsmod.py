@@ -751,27 +751,79 @@ def make_godmode_triggers():
 
 
 def make_repair_trigger():
-    comps = ["body", "turret", "gun", "engine", "trackleft", "trackright", "wheel", "shield", "mantlet", "cabin"]
-    blocks = []
+    """Repairs and refuels:
+    1. All player, allied, captured/stolen, and neutral vehicles (excluding active enemy-crewed vehicles).
+    2. All uninhabited vehicles and all hull-broken vehicle wrecks across the entire battlefield
+       (excluding permanently destroyed burned-out hulks with destroyed_components 'body'), neutralizing
+       any enemy-owned wreck to player '0' so friendly units don't shoot the newly repaired empty vehicle.
+    """
+    comps = [
+        "turret",
+        "aux_turret1",
+        "aux_turret2",
+        "aux_turret3",
+        "aux_turret4",
+        "mantlet",
+        "gun",
+        "gun1",
+        "gun2",
+        "gun3",
+        "engine",
+        "engine1",
+        "engine2",
+        "transmission",
+        "trackleft",
+        "trackright",
+        "wheelleft",
+        "wheelright",
+        "wheelleft1",
+        "wheelright1",
+        "wheelleft2",
+        "wheelright2",
+        "wheelleft3",
+        "wheelright3",
+        "wheelleft4",
+        "wheelright4",
+        "cabin",
+        "bodyback",
+        "shield",
+        "shield_cover",
+        "fuel",
+        "ammo",
+        "body",
+    ]
+    tag_blocks = []
+    neutralize_blocks = []
     for p in range(8):
-        comp_cmds = []
-        for c in comps:
-            comp_cmds.append(f"""\t\t\t\t\t\t{{"actor_component"
+        tag_blocks.append(f"""\t\t\t\t\t{{"if"
+\t\t\t\t\t\t{{condition
+\t\t\t\t\t\t\t{{type cmp_i}}
+\t\t\t\t\t\t\t{{var "cheat_options-player$"}}
+\t\t\t\t\t\t\t{{op "=="}}
+\t\t\t\t\t\t\t{{value {p}}}
+\t\t\t\t\t\t}}
+\t\t\t\t\t\t{{"entity_state"
 \t\t\t\t\t\t\t{{selector
 \t\t\t\t\t\t\t\t{{source advanced}}
 \t\t\t\t\t\t\t\t{{ignore_captured_by_user 0}}
 \t\t\t\t\t\t\t\t{{group
 \t\t\t\t\t\t\t\t\t{{include
-\t\t\t\t\t\t\t\t\t\t{{player
-\t\t\t\t\t\t\t\t\t\t\t{{player "{p}"}}
-\t\t\t\t\t\t\t\t\t\t}}
 \t\t\t\t\t\t\t\t\t\t{{prop
 \t\t\t\t\t\t\t\t\t\t\t{{prop vehicle}}
 \t\t\t\t\t\t\t\t\t\t}}
 \t\t\t\t\t\t\t\t\t}}
 \t\t\t\t\t\t\t\t\t{{exclude
+\t\t\t\t\t\t\t\t\t\t{{relation
+\t\t\t\t\t\t\t\t\t\t\t{{relation enemy}}
+\t\t\t\t\t\t\t\t\t\t\t{{player "{p}"}}
+\t\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t\t\t{{destroyed_components
+\t\t\t\t\t\t\t\t\t\t\t{{masks
+\t\t\t\t\t\t\t\t\t\t\t\t"body"
+\t\t\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t\t\t}}
 \t\t\t\t\t\t\t\t\t\t{{state
-\t\t\t\t\t\t\t\t\t\t\t{{state dead}}
+\t\t\t\t\t\t\t\t\t\t\t{{state inactive}}
 \t\t\t\t\t\t\t\t\t\t}}
 \t\t\t\t\t\t\t\t\t\t{{tag
 \t\t\t\t\t\t\t\t\t\t\t{{tag hidden}}
@@ -779,18 +831,113 @@ def make_repair_trigger():
 \t\t\t\t\t\t\t\t\t}}
 \t\t\t\t\t\t\t\t}}
 \t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t{{component {c}}}
-\t\t\t\t\t\t\t{{state work}}
-\t\t\t\t\t\t}}""")
-        blocks.append(f"""\t\t\t\t\t{{"if"
+\t\t\t\t\t\t\t{{tag_add cheat_repair_target}}
+\t\t\t\t\t\t}}
+\t\t\t\t\t}}""")
+        neutralize_blocks.append(f"""\t\t\t\t\t{{"if"
 \t\t\t\t\t\t{{condition
 \t\t\t\t\t\t\t{{type cmp_i}}
 \t\t\t\t\t\t\t{{var "cheat_options-player$"}}
 \t\t\t\t\t\t\t{{op "=="}}
 \t\t\t\t\t\t\t{{value {p}}}
 \t\t\t\t\t\t}}
-{chr(10).join(comp_cmds)}
+\t\t\t\t\t\t{{"player"
+\t\t\t\t\t\t\t{{selector
+\t\t\t\t\t\t\t\t{{source advanced}}
+\t\t\t\t\t\t\t\t{{ignore_captured_by_user 0}}
+\t\t\t\t\t\t\t\t{{group
+\t\t\t\t\t\t\t\t\t{{select
+\t\t\t\t\t\t\t\t\t\t{{tag
+\t\t\t\t\t\t\t\t\t\t\t{{tag cheat_repair_target}}
+\t\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t\t{{include
+\t\t\t\t\t\t\t\t\t\t{{relation
+\t\t\t\t\t\t\t\t\t\t\t{{relation enemy}}
+\t\t\t\t\t\t\t\t\t\t\t{{player "{p}"}}
+\t\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t{{operation set}}
+\t\t\t\t\t\t\t{{player "0"}}
+\t\t\t\t\t\t}}
 \t\t\t\t\t}}""")
+
+    wreck_tag_blocks = """\t\t\t\t\t{"entity_state"
+\t\t\t\t\t\t{selector
+\t\t\t\t\t\t\t{source advanced}
+\t\t\t\t\t\t\t{ignore_captured_by_user 0}
+\t\t\t\t\t\t\t{group
+\t\t\t\t\t\t\t\t{include
+\t\t\t\t\t\t\t\t\t{prop
+\t\t\t\t\t\t\t\t\t\t{prop vehicle}
+\t\t\t\t\t\t\t\t\t}
+\t\t\t\t\t\t\t\t}
+\t\t\t\t\t\t\t\t{exclude
+\t\t\t\t\t\t\t\t\t{state
+\t\t\t\t\t\t\t\t\t\t{state inhabited}
+\t\t\t\t\t\t\t\t\t}
+\t\t\t\t\t\t\t\t\t{destroyed_components
+\t\t\t\t\t\t\t\t\t\t{masks
+\t\t\t\t\t\t\t\t\t\t\t"body"
+\t\t\t\t\t\t\t\t\t\t}
+\t\t\t\t\t\t\t\t\t}
+\t\t\t\t\t\t\t\t\t{state
+\t\t\t\t\t\t\t\t\t\t{state inactive}
+\t\t\t\t\t\t\t\t\t}
+\t\t\t\t\t\t\t\t\t{tag
+\t\t\t\t\t\t\t\t\t\t{tag hidden}
+\t\t\t\t\t\t\t\t\t}
+\t\t\t\t\t\t\t\t}
+\t\t\t\t\t\t\t}
+\t\t\t\t\t\t}
+\t\t\t\t\t\t{tag_add cheat_repair_target}
+\t\t\t\t\t}
+\t\t\t\t\t{"entity_state"
+\t\t\t\t\t\t{selector
+\t\t\t\t\t\t\t{source advanced}
+\t\t\t\t\t\t\t{ignore_captured_by_user 0}
+\t\t\t\t\t\t\t{group
+\t\t\t\t\t\t\t\t{include
+\t\t\t\t\t\t\t\t\t{prop
+\t\t\t\t\t\t\t\t\t\t{prop vehicle}
+\t\t\t\t\t\t\t\t\t}
+\t\t\t\t\t\t\t\t\t{broken_components
+\t\t\t\t\t\t\t\t\t\t{masks
+\t\t\t\t\t\t\t\t\t\t\t"body"
+\t\t\t\t\t\t\t\t\t\t}
+\t\t\t\t\t\t\t\t\t}
+\t\t\t\t\t\t\t\t}
+\t\t\t\t\t\t\t\t{exclude
+\t\t\t\t\t\t\t\t\t{destroyed_components
+\t\t\t\t\t\t\t\t\t\t{masks
+\t\t\t\t\t\t\t\t\t\t\t"body"
+\t\t\t\t\t\t\t\t\t\t}
+\t\t\t\t\t\t\t\t\t}
+\t\t\t\t\t\t\t\t\t{state
+\t\t\t\t\t\t\t\t\t\t{state inactive}
+\t\t\t\t\t\t\t\t\t}
+\t\t\t\t\t\t\t\t\t{tag
+\t\t\t\t\t\t\t\t\t\t{tag hidden}
+\t\t\t\t\t\t\t\t\t}
+\t\t\t\t\t\t\t\t}
+\t\t\t\t\t\t\t}
+\t\t\t\t\t\t}
+\t\t\t\t\t\t{tag_add cheat_repair_target}
+\t\t\t\t\t}"""
+
+    comp_cmds = []
+    for c in comps:
+        comp_cmds.append(f"""\t\t\t\t\t{{"actor_component"
+\t\t\t\t\t\t{{selector
+\t\t\t\t\t\t\t{{ignore_captured_by_user 0}}
+\t\t\t\t\t\t\t{{tag cheat_repair_target}}
+\t\t\t\t\t\t}}
+\t\t\t\t\t\t{{component {c}}}
+\t\t\t\t\t\t{{state work}}
+\t\t\t\t\t}}""")
+
     return f"""\t\t\t{{"cheats/active/repair"
 \t\t\t\t{{condition
 \t\t\t\t\t{{terms
@@ -800,7 +947,25 @@ def make_repair_trigger():
 \t\t\t\t\t}}
 \t\t\t\t}}
 \t\t\t\t{{actions
-{chr(10).join(blocks)}
+{chr(10).join(tag_blocks)}
+{wreck_tag_blocks}
+{chr(10).join(neutralize_blocks)}
+{chr(10).join(comp_cmds)}
+\t\t\t\t\t{{"inventory"
+\t\t\t\t\t\t{{selector
+\t\t\t\t\t\t\t{{ignore_captured_by_user 0}}
+\t\t\t\t\t\t\t{{tag cheat_repair_target}}
+\t\t\t\t\t\t}}
+\t\t\t\t\t\t{{action fuel}}
+\t\t\t\t\t\t{{amount 999}}
+\t\t\t\t\t}}
+\t\t\t\t\t{{"entity_state"
+\t\t\t\t\t\t{{selector
+\t\t\t\t\t\t\t{{ignore_captured_by_user 0}}
+\t\t\t\t\t\t\t{{tag cheat_repair_target}}
+\t\t\t\t\t\t}}
+\t\t\t\t\t\t{{tag_remove cheat_repair_target}}
+\t\t\t\t\t}}
 \t\t\t\t\t{{"event"
 \t\t\t\t\t\t{{event "cheat_repair"}}
 \t\t\t\t\t\t{{mode reset}}
@@ -1455,7 +1620,7 @@ def patch_mi_content(raw_txt, label):
         "cheatweakenemyoff": ('"Instakill"', None, '"Disable: restore normal enemy HP and armor"'),
         "cheat_addexp": ('"Max Veterancy"', '"whitesnoop/cheats/veterancy"', '"One-shot: promote all currently alive friendly infantry, gun crews, and vehicle crews to Level 8"'),
         "cheat_conquest_win": ('"Instant Win"', '"whitesnoop/cheats/win"', '"Immediately win the current Conquest battle with full victory rewards"'),
-        "cheat_repair": ('"Repair Vehicles"', '"whitesnoop/cheats/repair"', '"Instantly repair hull, turret, gun, engine, tracks & wheels on all your vehicles"'),
+        "cheat_repair": ('"Repair Vehicles"', '"whitesnoop/cheats/repair"', '"Instantly repair & refuel all your vehicles, captured/stolen enemy vehicles, and all repairable battlefield wrecks"'),
         "cheat_destroyarmor": ('"Break Enemy Armor"', '"whitesnoop/cheats/destroyarmor"', '"Break gun, turret, engine & tracks on all enemy vehicles on the map"'),
         "cheat_explosion": ('"Explosion"', None, '"Click on the ground to trigger an explosion at cursor"'),
         "cheat_artillery": ('"Artillery Barrage"', None, '"Click on the ground to call an artillery barrage at cursor"'),
