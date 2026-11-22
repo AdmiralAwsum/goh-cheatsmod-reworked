@@ -1270,48 +1270,107 @@ def patch_mi_content(raw_txt, label):
 \t\t\t}}"""
     txt, _ = replace_trigger_block(txt, '{"minegetsfilled"', new_minegetsfilled)
 
-    # 10. Fix Infinite Ammo: spawn ammo_cheatsmod_global when turned ON, delete when turned OFF
-    old_infammo_on = """\t\t\t\t\t\t\t{"entity_state"
-\t\t\t\t\t\t\t\t{selector
-\t\t\t\t\t\t\t\t\t{ignore_captured_by_user 0}
-\t\t\t\t\t\t\t\t\t{tag "cheatsmod_inf-ammo"}
-\t\t\t\t\t\t\t\t}
-\t\t\t\t\t\t\t\t{tag_remove hidden}
-\t\t\t\t\t\t\t\t{inactive off}
-\t\t\t\t\t\t\t}"""
-    new_infammo_on = """\t\t\t\t\t\t\t{"spawn"
-\t\t\t\t\t\t\t\t{entity "ammo_cheatsmod_global"}
-\t\t\t\t\t\t\t\t{waypoint "30001"}
-\t\t\t\t\t\t\t\t{tag cheatsmod_inf-ammo}
-\t\t\t\t\t\t\t}
-\t\t\t\t\t\t\t{"entity_state"
-\t\t\t\t\t\t\t\t{selector
-\t\t\t\t\t\t\t\t\t{ignore_captured_by_user 0}
-\t\t\t\t\t\t\t\t\t{tag "cheatsmod_inf-ammo"}
-\t\t\t\t\t\t\t\t}
-\t\t\t\t\t\t\t\t{impregnability full}
-\t\t\t\t\t\t\t\t{tag_remove hidden}
-\t\t\t\t\t\t\t\t{inactive off}
-\t\t\t\t\t\t\t}"""
-    if old_infammo_on in txt:
-        txt = txt.replace(old_infammo_on, new_infammo_on, 1)
-
-    old_infammo_off = """\t\t\t\t\t\t\t{"entity_state"
-\t\t\t\t\t\t\t\t{selector
-\t\t\t\t\t\t\t\t\t{ignore_captured_by_user 0}
-\t\t\t\t\t\t\t\t\t{tag "cheatsmod_inf-ammo"}
-\t\t\t\t\t\t\t\t}
-\t\t\t\t\t\t\t\t{tag_add hidden}
-\t\t\t\t\t\t\t\t{inactive on}
-\t\t\t\t\t\t\t}"""
-    new_infammo_off = """\t\t\t\t\t\t\t{"delete"
-\t\t\t\t\t\t\t\t{selector
-\t\t\t\t\t\t\t\t\t{ignore_captured_by_user 0}
-\t\t\t\t\t\t\t\t\t{tag "cheatsmod_inf-ammo"}
-\t\t\t\t\t\t\t\t}
-\t\t\t\t\t\t\t}"""
-    if old_infammo_off in txt:
-        txt = txt.replace(old_infammo_off, new_infammo_off, 1)
+    # 10. Fix Infinite Ammo: spawn ammo_cheatsmod_global owned by cheat_options-player$ (never neutral/AI!) when ON, delete when OFF
+    infammo_player_blocks = []
+    for p in range(8):
+        infammo_player_blocks.append(f"""\t\t\t\t\t\t\t{{"if"
+\t\t\t\t\t\t\t\t{{condition
+\t\t\t\t\t\t\t\t\t{{type cmp_i}}
+\t\t\t\t\t\t\t\t\t{{var "cheat_options-player$"}}
+\t\t\t\t\t\t\t\t\t{{op "=="}}
+\t\t\t\t\t\t\t\t\t{{value {p}}}
+\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t{{"player"
+\t\t\t\t\t\t\t\t\t{{selector
+\t\t\t\t\t\t\t\t\t\t{{ignore_captured_by_user 0}}
+\t\t\t\t\t\t\t\t\t\t{{tag "cheatsmod_inf-ammo"}}
+\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t\t{{player "{p}"}}
+\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t}}""")
+    new_infammo_trig = f"""\t\t\t{{"cheats/infammo"
+\t\t\t\t{{condition
+\t\t\t\t\t{{terms
+\t\t\t\t\t\t{{"1.event"
+\t\t\t\t\t\t\t{{id "cheats/infammo"}}
+\t\t\t\t\t\t}}
+\t\t\t\t\t}}
+\t\t\t\t}}
+\t\t\t\t{{actions
+\t\t\t\t\t{{"switch"
+\t\t\t\t\t\t{{"case"
+\t\t\t\t\t\t\t{{condition
+\t\t\t\t\t\t\t\t{{type cmp_i}}
+\t\t\t\t\t\t\t\t{{var "cheat_infammo$"}}
+\t\t\t\t\t\t\t\t{{op "=="}}
+\t\t\t\t\t\t\t\t{{value 0}}
+\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t{{"set_i"
+\t\t\t\t\t\t\t\t{{var "cheat_infammo$"}}
+\t\t\t\t\t\t\t\t{{op "="}}
+\t\t\t\t\t\t\t\t{{value 1}}
+\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t{{"talk"
+\t\t\t\t\t\t\t\t{{selector
+\t\t\t\t\t\t\t\t\t{{ignore_captured_by_user 0}}
+\t\t\t\t\t\t\t\t\t{{tag cheat_say}}
+\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t{{text "mission/singlecheats/c_infammo_0"}}
+\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t{{"spawn"
+\t\t\t\t\t\t\t\t{{entity "ammo_cheatsmod_global"}}
+\t\t\t\t\t\t\t\t{{waypoint "30001"}}
+\t\t\t\t\t\t\t\t{{tag "cheatsmod_inf-ammo"}}
+\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t{{"entity_state"
+\t\t\t\t\t\t\t\t{{selector
+\t\t\t\t\t\t\t\t\t{{ignore_captured_by_user 0}}
+\t\t\t\t\t\t\t\t\t{{tag "cheatsmod_inf-ammo"}}
+\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t{{impregnability full}}
+\t\t\t\t\t\t\t\t{{tag_remove hidden}}
+\t\t\t\t\t\t\t\t{{inactive off}}
+\t\t\t\t\t\t\t}}
+{chr(10).join(infammo_player_blocks)}
+\t\t\t\t\t\t}}
+\t\t\t\t\t\t{{"case"
+\t\t\t\t\t\t\t{{condition
+\t\t\t\t\t\t\t\t{{type cmp_i}}
+\t\t\t\t\t\t\t\t{{var "cheat_infammo$"}}
+\t\t\t\t\t\t\t\t{{op "=="}}
+\t\t\t\t\t\t\t\t{{value 1}}
+\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t{{"set_i"
+\t\t\t\t\t\t\t\t{{var "cheat_infammo$"}}
+\t\t\t\t\t\t\t\t{{op "="}}
+\t\t\t\t\t\t\t\t{{value 0}}
+\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t{{"talk"
+\t\t\t\t\t\t\t\t{{selector
+\t\t\t\t\t\t\t\t\t{{ignore_captured_by_user 0}}
+\t\t\t\t\t\t\t\t\t{{tag cheat_say}}
+\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t{{text "mission/singlecheats/c_deactivated_0"}}
+\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t{{"delete"
+\t\t\t\t\t\t\t\t{{selector
+\t\t\t\t\t\t\t\t\t{{ignore_captured_by_user 0}}
+\t\t\t\t\t\t\t\t\t{{tag "cheatsmod_inf-ammo"}}
+\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t}}
+\t\t\t\t\t}}
+\t\t\t\t\t{{"event"
+\t\t\t\t\t\t{{event "cheats/infammo"}}
+\t\t\t\t\t\t{{mode reset}}
+\t\t\t\t\t\t{{delay 0}}
+\t\t\t\t\t}}
+\t\t\t\t\t{{"trigger"
+\t\t\t\t\t\t{{name "cheats/infammo"}}
+\t\t\t\t\t}}
+\t\t\t\t}}
+\t\t\t}}"""
+    txt, _ = replace_trigger_block(txt, '{"cheats/infammo"', new_infammo_trig)
 
     # 11. Add {delay 1} to continuous triggers (godmodecheckon, weakenemy, fuel_on) so they don't run 60x/sec
     #     AND strip any legacy blanket {state user_control} blocks so AI bots in Conquest/Skirmish are NEVER buffed!
