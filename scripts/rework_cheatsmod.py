@@ -151,7 +151,7 @@ def rewrite_supply_and_entities():
 \t\t{time 0.1}
 \t}
 \t{collider "mine.at"}
-\t{props "antitank"}
+\t{props "antitank" "cheat_mine_drop"}
 \t(include "/properties/shadow/round.inc")
 \t{Obstacle "body"
 \t\t{Circle2
@@ -173,7 +173,7 @@ def rewrite_supply_and_entities():
 \t\t{time 0.1}
 \t}
 \t{collider "mine.ap"}
-\t{props "bounding" "antipersonnel"}
+\t{props "bounding" "antipersonnel" "cheat_mine_drop"}
 \t{Obstacle "body"
 \t\t{Circle2
 \t\t\t{Radius 20}
@@ -188,7 +188,7 @@ def rewrite_supply_and_entities():
 \t(include "/properties/ammo_box.ext")
 \t(include "/cheats/cheat_supply.inc")
 \t{extension "../ammo_cheatsmod/inf_crate.mdl"}
-\t{props "vision_lev00_can" "ammo_crate" "no_recrew_logic"}
+\t{props "vision_lev00_can" "ammo_crate" "no_recrew_logic" "cheatsmod_inf_ammo"}
 \t("cheat_supply_ammo_global")
 \t{extender "inventory"
 \t\t{Box
@@ -199,20 +199,41 @@ def rewrite_supply_and_entities():
 """
     ent_pak = os.path.join(MOD, "resource", "entity", "entity.pak")
     tmp_pak = ent_pak + ".tmp"
+    at_assets = {}
+    ap_assets = {}
+    with zipfile.ZipFile(ent_pak, "r") as zin:
+        for item in zin.infolist():
+            nl = item.filename.lower()
+            if nl.endswith("/") or nl.endswith(".def"):
+                continue
+            if nl.startswith("inventory/mine_antitank/") or nl.startswith("inventory/mine_antitank_cheat/"):
+                at_assets[os.path.basename(item.filename)] = zin.read(item.filename)
+            elif nl.startswith("inventory/mine_ap/") or nl.startswith("inventory/mine_s_cheat/"):
+                ap_assets[os.path.basename(item.filename)] = zin.read(item.filename)
+    assert "mine_m1a1.mdl" in at_assets, f"Missing mine_m1a1.mdl in entity.pak (keys={list(at_assets)})"
+    assert "mine_s.mdl" in ap_assets, f"Missing mine_s.mdl in entity.pak (keys={list(ap_assets)})"
+
     with zipfile.ZipFile(ent_pak, "r") as zin, zipfile.ZipFile(tmp_pak, "w", compression=zipfile.ZIP_DEFLATED) as zout:
         for item in zin.infolist():
             nl = item.filename.lower()
-            if nl == "inventory/mine_antitank/mine_antitank_cheat.def":
-                zout.writestr(item.filename, mine_at_def.encode("utf-8"))
-            elif nl == "inventory/mine_ap/mine_s_cheat.def":
-                zout.writestr(item.filename, mine_ap_def.encode("utf-8"))
-            elif nl == "service/ammo_cheatsmod_global/ammo_cheatsmod_global.def":
+            if (
+                nl.startswith("inventory/mine_antitank/")
+                or nl.startswith("inventory/mine_antitank_cheat/")
+                or nl.startswith("inventory/mine_ap/")
+                or nl.startswith("inventory/mine_s_cheat/")
+                or nl == "service/ammo_cheatsmod_global/ammo_cheatsmod_global.def"
+            ):
                 continue
-            else:
-                zout.writestr(item, zin.read(item.filename))
+            zout.writestr(item, zin.read(item.filename))
+        for fname, data in at_assets.items():
+            zout.writestr(f"inventory/mine_antitank_cheat/{fname}", data)
+        zout.writestr("inventory/mine_antitank_cheat/mine_antitank_cheat.def", mine_at_def.encode("utf-8"))
+        for fname, data in ap_assets.items():
+            zout.writestr(f"inventory/mine_s_cheat/{fname}", data)
+        zout.writestr("inventory/mine_s_cheat/mine_s_cheat.def", mine_ap_def.encode("utf-8"))
         zout.writestr("service/ammo_cheatsmod_global/ammo_cheatsmod_global.def", ammo_global_def.encode("utf-8"))
     os.replace(tmp_pak, ent_pak)
-    print("Updated entity.pak (instant-plant mines + ammo_cheatsmod_global).")
+    print("Updated entity.pak (matching mine folders + cheat_mine_drop/cheatsmod_inf_ammo props).")
 
     # 3. Update gamelogic.pak: add fast lightweight m1a1_cheat.mine & s_cheat.mine stuff definitions
     m1a1_cheat_mine = """{from "pattern antitank"
@@ -1441,31 +1462,90 @@ def patch_mi_content(raw_txt, label):
         '',
     )
 
-    old_mine_spawn = """\t\t\t\t\t{"spawn"
-\t\t\t\t\t\t{entity "mine_antitank_cheat"}
-\t\t\t\t\t\t{waypoint "30001"}
-\t\t\t\t\t}"""
-    new_mine_spawn = """\t\t\t\t\t{"spawn"
-\t\t\t\t\t\t{entity "mine_antitank_cheat"}
-\t\t\t\t\t\t{waypoint "30001"}
-\t\t\t\t\t\t{tag cheat_mine}
-\t\t\t\t\t}"""
-    if txt.count(old_mine_spawn) == 4:
-        txt = txt.replace(old_mine_spawn, new_mine_spawn + "\n" + new_mine_spawn)
+    # 9b. Rewrite cheats/units/mine, cheats/units/mine_ap, and minegetsfilled idempotently:
+    #     GEM2 {"spawn"} ignores {tag}, so we select unarmed dropped mines by unique {prop cheat_mine_drop}
+    #     excluding {tag mine_planted} / {tag cheat_mine_armed} / {tag hidden}, arm them for cheat_options-player$,
+    #     and tag them cheat_mine_armed so they show green friendly icons and are never re-armed on later clicks.
+    mine_spawns_at = "\n".join(
+        '\t\t\t\t\t{"spawn"\n\t\t\t\t\t\t{entity "mine_antitank_cheat"}\n\t\t\t\t\t\t{waypoint "30001"}\n\t\t\t\t\t}'
+        for _ in range(8)
+    )
+    new_units_mine = f"""\t\t\t{{"cheats/units/mine"
+\t\t\t\t{{condition
+\t\t\t\t\t{{terms
+\t\t\t\t\t\t{{"1.event"
+\t\t\t\t\t\t\t{{id "cheats/mine"}}
+\t\t\t\t\t\t}}
+\t\t\t\t\t}}
+\t\t\t\t}}
+\t\t\t\t{{actions
+{mine_spawns_at}
+\t\t\t\t\t{{"call"
+\t\t\t\t\t\t{{function "minegetsfilled"}}
+\t\t\t\t\t}}
+\t\t\t\t\t{{"event"
+\t\t\t\t\t\t{{event "cheats/mine"}}
+\t\t\t\t\t\t{{mode reset}}
+\t\t\t\t\t\t{{delay 0}}
+\t\t\t\t\t}}
+\t\t\t\t\t{{"trigger"
+\t\t\t\t\t\t{{name "cheats/units/mine"}}
+\t\t\t\t\t}}
+\t\t\t\t}}
+\t\t\t}}"""
+    mine_spawns_ap = "\n".join(
+        '\t\t\t\t\t{"spawn"\n\t\t\t\t\t\t{entity "mine_s_cheat"}\n\t\t\t\t\t\t{waypoint "30001"}\n\t\t\t\t\t}'
+        for _ in range(8)
+    )
+    new_units_mine_ap = f"""\t\t\t{{"cheats/units/mine_ap"
+\t\t\t\t{{condition
+\t\t\t\t\t{{terms
+\t\t\t\t\t\t{{"1.event"
+\t\t\t\t\t\t\t{{id "cheats/mine_ap"}}
+\t\t\t\t\t\t}}
+\t\t\t\t\t}}
+\t\t\t\t}}
+\t\t\t\t{{actions
+{mine_spawns_ap}
+\t\t\t\t\t{{"call"
+\t\t\t\t\t\t{{function "minegetsfilled"}}
+\t\t\t\t\t}}
+\t\t\t\t\t{{"event"
+\t\t\t\t\t\t{{event "cheats/mine_ap"}}
+\t\t\t\t\t\t{{mode reset}}
+\t\t\t\t\t\t{{delay 0}}
+\t\t\t\t\t}}
+\t\t\t\t\t{{"trigger"
+\t\t\t\t\t\t{{name "cheats/units/mine_ap"}}
+\t\t\t\t\t}}
+\t\t\t\t}}
+\t\t\t}}"""
+    txt, ok_m1 = replace_trigger_block(txt, '{"cheats/units/mine"', new_units_mine)
+    txt, ok_m2 = replace_trigger_block(txt, '{"cheats/units/mine_ap"', new_units_mine_ap)
+    assert ok_m1 and ok_m2, f"Mine trigger replace failed in {label}: {ok_m1}, {ok_m2}"
 
-    old_mine_ap_spawn = """\t\t\t\t\t{"spawn"
-\t\t\t\t\t\t{entity "mine_s_cheat"}
-\t\t\t\t\t\t{waypoint "30001"}
-\t\t\t\t\t}"""
-    new_mine_ap_spawn = """\t\t\t\t\t{"spawn"
-\t\t\t\t\t\t{entity "mine_s_cheat"}
-\t\t\t\t\t\t{waypoint "30001"}
-\t\t\t\t\t\t{tag cheat_mine}
-\t\t\t\t\t}"""
-    if txt.count(old_mine_ap_spawn) == 4:
-        txt = txt.replace(old_mine_ap_spawn, new_mine_ap_spawn + "\n" + new_mine_ap_spawn)
-
-    # Faster arming in minegetsfilled (0.2s) and use cheat_options-player$ when cheat_enemyspawn$ == 0
+    mine_sel = """\t\t\t\t\t\t{selector
+\t\t\t\t\t\t\t{source advanced}
+\t\t\t\t\t\t\t{ignore_captured_by_user 0}
+\t\t\t\t\t\t\t{group
+\t\t\t\t\t\t\t\t{select
+\t\t\t\t\t\t\t\t\t{prop
+\t\t\t\t\t\t\t\t\t\t{prop cheat_mine_drop}
+\t\t\t\t\t\t\t\t\t}
+\t\t\t\t\t\t\t\t}
+\t\t\t\t\t\t\t\t{exclude
+\t\t\t\t\t\t\t\t\t{tag
+\t\t\t\t\t\t\t\t\t\t{tag mine_planted}
+\t\t\t\t\t\t\t\t\t}
+\t\t\t\t\t\t\t\t\t{tag
+\t\t\t\t\t\t\t\t\t\t{tag cheat_mine_armed}
+\t\t\t\t\t\t\t\t\t}
+\t\t\t\t\t\t\t\t\t{tag
+\t\t\t\t\t\t\t\t\t\t{tag hidden}
+\t\t\t\t\t\t\t\t\t}
+\t\t\t\t\t\t\t\t}
+\t\t\t\t\t\t\t}
+\t\t\t\t\t\t}"""
     mine_arm_blocks = []
     for p in range(8):
         mine_arm_blocks.append(f"""\t\t\t\t{{"if"
@@ -1476,17 +1556,7 @@ def patch_mi_content(raw_txt, label):
 \t\t\t\t\t\t{{value {p}}}
 \t\t\t\t\t}}
 \t\t\t\t\t{{"mine_state"
-\t\t\t\t\t\t{{selector
-\t\t\t\t\t\t\t{{source advanced}}
-\t\t\t\t\t\t\t{{ignore_captured_by_user 0}}
-\t\t\t\t\t\t\t{{group
-\t\t\t\t\t\t\t\t{{select
-\t\t\t\t\t\t\t\t\t{{tag
-\t\t\t\t\t\t\t\t\t\t{{tag cheat_mine}}
-\t\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t}}
+{mine_sel}
 \t\t\t\t\t\t{{action arm}}
 \t\t\t\t\t\t{{miner "{p}"}}
 \t\t\t\t\t}}
@@ -1497,23 +1567,36 @@ def patch_mi_content(raw_txt, label):
 \t\t\t\t}}
 {chr(10).join(mine_arm_blocks)}
 \t\t\t\t{{"entity_state"
-\t\t\t\t\t{{selector
-\t\t\t\t\t\t{{source advanced}}
-\t\t\t\t\t\t{{ignore_captured_by_user 0}}
-\t\t\t\t\t\t{{group
-\t\t\t\t\t\t\t{{select
-\t\t\t\t\t\t\t\t{{tag
-\t\t\t\t\t\t\t\t\t{{tag cheat_mine}}
-\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t}}
-\t\t\t\t\t}}
-\t\t\t\t\t{{tag_remove cheat_mine}}
+{mine_sel.replace(chr(9)*6, chr(9)*5)}
+\t\t\t\t\t{{tag_add cheat_mine_armed}}
 \t\t\t\t}}
 \t\t\t}}"""
-    txt, _ = replace_trigger_block(txt, '{"minegetsfilled"', new_minegetsfilled)
+    txt, ok_mgf = replace_trigger_block(txt, '{"minegetsfilled"', new_minegetsfilled)
+    assert ok_mgf, f"minegetsfilled replace failed in {label}"
 
-    # 10. Fix Infinite Ammo: spawn ammo_cheatsmod_global owned by cheat_options-player$ (never neutral/AI!) when ON, delete when OFF
+    # 10. Fix Infinite Ammo: spawn ammo_cheatsmod_global, select by {prop cheatsmod_inf_ammo} (since GEM2 {"spawn"} ignores {tag})
+    infammo_sel_8 = """\t\t\t\t\t\t\t\t\t{selector
+\t\t\t\t\t\t\t\t\t\t{source advanced}
+\t\t\t\t\t\t\t\t\t\t{ignore_captured_by_user 0}
+\t\t\t\t\t\t\t\t\t\t{group
+\t\t\t\t\t\t\t\t\t\t\t{select
+\t\t\t\t\t\t\t\t\t\t\t\t{prop
+\t\t\t\t\t\t\t\t\t\t\t\t\t{prop cheatsmod_inf_ammo}
+\t\t\t\t\t\t\t\t\t\t\t\t}
+\t\t\t\t\t\t\t\t\t\t\t}
+\t\t\t\t\t\t\t\t\t\t}
+\t\t\t\t\t\t\t\t\t}"""
+    infammo_sel_7 = """\t\t\t\t\t\t\t\t{selector
+\t\t\t\t\t\t\t\t\t{source advanced}
+\t\t\t\t\t\t\t\t\t{ignore_captured_by_user 0}
+\t\t\t\t\t\t\t\t\t{group
+\t\t\t\t\t\t\t\t\t\t{select
+\t\t\t\t\t\t\t\t\t\t\t{prop
+\t\t\t\t\t\t\t\t\t\t\t\t{prop cheatsmod_inf_ammo}
+\t\t\t\t\t\t\t\t\t\t\t}
+\t\t\t\t\t\t\t\t\t\t}
+\t\t\t\t\t\t\t\t\t}
+\t\t\t\t\t\t\t\t}"""
     infammo_player_blocks = []
     for p in range(8):
         infammo_player_blocks.append(f"""\t\t\t\t\t\t\t{{"if"
@@ -1524,10 +1607,7 @@ def patch_mi_content(raw_txt, label):
 \t\t\t\t\t\t\t\t\t{{value {p}}}
 \t\t\t\t\t\t\t\t}}
 \t\t\t\t\t\t\t\t{{"player"
-\t\t\t\t\t\t\t\t\t{{selector
-\t\t\t\t\t\t\t\t\t\t{{ignore_captured_by_user 0}}
-\t\t\t\t\t\t\t\t\t\t{{tag "cheatsmod_inf-ammo"}}
-\t\t\t\t\t\t\t\t\t}}
+{infammo_sel_8}
 \t\t\t\t\t\t\t\t\t{{operation set}}
 \t\t\t\t\t\t\t\t\t{{player "{p}"}}
 \t\t\t\t\t\t\t\t}}
@@ -1564,14 +1644,14 @@ def patch_mi_content(raw_txt, label):
 \t\t\t\t\t\t\t{{"spawn"
 \t\t\t\t\t\t\t\t{{entity "ammo_cheatsmod_global"}}
 \t\t\t\t\t\t\t\t{{waypoint "30001"}}
-\t\t\t\t\t\t\t\t{{tag "cheatsmod_inf-ammo"}}
+\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t{{"delay"
+\t\t\t\t\t\t\t\t{{time 0.1}}
 \t\t\t\t\t\t\t}}
 \t\t\t\t\t\t\t{{"entity_state"
-\t\t\t\t\t\t\t\t{{selector
-\t\t\t\t\t\t\t\t\t{{ignore_captured_by_user 0}}
-\t\t\t\t\t\t\t\t\t{{tag "cheatsmod_inf-ammo"}}
-\t\t\t\t\t\t\t\t}}
+{infammo_sel_7}
 \t\t\t\t\t\t\t\t{{impregnability full}}
+\t\t\t\t\t\t\t\t{{tag_add "cheatsmod_inf-ammo"}}
 \t\t\t\t\t\t\t\t{{tag_remove hidden}}
 \t\t\t\t\t\t\t\t{{inactive off}}
 \t\t\t\t\t\t\t}}
@@ -1597,10 +1677,7 @@ def patch_mi_content(raw_txt, label):
 \t\t\t\t\t\t\t\t{{text "mission/singlecheats/c_deactivated_0"}}
 \t\t\t\t\t\t\t}}
 \t\t\t\t\t\t\t{{"delete"
-\t\t\t\t\t\t\t\t{{selector
-\t\t\t\t\t\t\t\t\t{{ignore_captured_by_user 0}}
-\t\t\t\t\t\t\t\t\t{{tag "cheatsmod_inf-ammo"}}
-\t\t\t\t\t\t\t\t}}
+{infammo_sel_7}
 \t\t\t\t\t\t\t}}
 \t\t\t\t\t\t}}
 \t\t\t\t\t}}
