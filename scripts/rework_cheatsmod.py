@@ -294,7 +294,7 @@ def make_addexp_trigger():
 \t\t\t\t\t\t\t\t{{source advanced}}
 \t\t\t\t\t\t\t\t{{ignore_captured_by_user 0}}
 \t\t\t\t\t\t\t\t{{group
-\t\t\t\t\t\t\t\t\t{{select
+\t\t\t\t\t\t\t\t\t{{include
 \t\t\t\t\t\t\t\t\t\t{{player
 \t\t\t\t\t\t\t\t\t\t\t{{player "{p}"}}
 \t\t\t\t\t\t\t\t\t\t}}
@@ -479,7 +479,7 @@ def make_godmode_triggers():
 \t\t\t\t\t\t\t\t{{source advanced}}
 \t\t\t\t\t\t\t\t{{ignore_captured_by_user 0}}
 \t\t\t\t\t\t\t\t{{group
-\t\t\t\t\t\t\t\t\t{{select
+\t\t\t\t\t\t\t\t\t{{include
 \t\t\t\t\t\t\t\t\t\t{{player
 \t\t\t\t\t\t\t\t\t\t\t{{player "{p}"}}
 \t\t\t\t\t\t\t\t\t\t}}
@@ -636,12 +636,10 @@ def make_repair_trigger():
 \t\t\t\t\t\t\t\t{{source advanced}}
 \t\t\t\t\t\t\t\t{{ignore_captured_by_user 0}}
 \t\t\t\t\t\t\t\t{{group
-\t\t\t\t\t\t\t\t\t{{select
+\t\t\t\t\t\t\t\t\t{{include
 \t\t\t\t\t\t\t\t\t\t{{player
 \t\t\t\t\t\t\t\t\t\t\t{{player "{p}"}}
 \t\t\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t\t\t{{include
 \t\t\t\t\t\t\t\t\t\t{{prop
 \t\t\t\t\t\t\t\t\t\t\t{{prop vehicle}}
 \t\t\t\t\t\t\t\t\t\t}}
@@ -775,7 +773,7 @@ def make_aimrange_trigger():
 \t\t\t\t\t\t\t\t{{source advanced}}
 \t\t\t\t\t\t\t\t{{ignore_captured_by_user 0}}
 \t\t\t\t\t\t\t\t{{group
-\t\t\t\t\t\t\t\t\t{{select
+\t\t\t\t\t\t\t\t\t{{include
 \t\t\t\t\t\t\t\t\t\t{{player
 \t\t\t\t\t\t\t\t\t\t\t{{player "{p}"}}
 \t\t\t\t\t\t\t\t\t\t}}
@@ -1457,10 +1455,10 @@ def patch_mi_content(raw_txt, label):
         txt,
     )
 
-    # Ensure bare {selector {player "X"}} in actor_state/entity_state excludes dead & inactive actors (valid nested {player})
+    # Ensure bare {selector {player "X"}} in actor_state/entity_state excludes dead & inactive actors (valid nested {player} inside {include})
     txt = re.sub(
         r'(\t+)\{selector\n\1\t\{player "(\d)"\}\n\1\}',
-        r'\1{selector\n\1\t{source advanced}\n\1\t{ignore_captured_by_user 0}\n\1\t{group\n\1\t\t{select\n\1\t\t\t{player\n\1\t\t\t\t{player "\2"}\n\1\t\t\t}\n\1\t\t}\n\1\t\t{exclude\n\1\t\t\t{state\n\1\t\t\t\t{state dead}\n\1\t\t\t}\n\1\t\t\t{state\n\1\t\t\t\t{state inactive}\n\1\t\t\t}\n\1\t\t}\n\1\t}\n\1}',
+        r'\1{selector\n\1\t{source advanced}\n\1\t{ignore_captured_by_user 0}\n\1\t{group\n\1\t\t{include\n\1\t\t\t{player\n\1\t\t\t\t{player "\2"}\n\1\t\t\t}\n\1\t\t}\n\1\t\t{exclude\n\1\t\t\t{state\n\1\t\t\t\t{state dead}\n\1\t\t\t}\n\1\t\t\t{state\n\1\t\t\t\t{state inactive}\n\1\t\t\t}\n\1\t\t}\n\1\t}\n\1}',
         txt,
     )
 
@@ -1468,6 +1466,13 @@ def patch_mi_content(raw_txt, label):
     txt = re.sub(
         r'(\t+)\{(select|include|exclude)\n(\1\t)\{player "(\d)"\}\n(\1)\}',
         r'\1{\2\n\3{player\n\3\t{player "\4"}\n\3}\n\5}',
+        txt,
+    )
+
+    # Ensure {player} is inside {include}, never inside {select} (GEM2 {select} only accepts tag/zone/mids/inventory_items!)
+    txt = re.sub(
+        r'(\t+)\{select\n(\1\t\{player\n\1\t\t\{player "\d"\}\n\1\t\}\n\1\})',
+        r'\1{include\n\2',
         txt,
     )
 
@@ -1543,7 +1548,7 @@ def patch_mi_content(raw_txt, label):
 \t\t\t\t\t\t\t{source advanced}
 \t\t\t\t\t\t\t{ignore_captured_by_user 0}
 \t\t\t\t\t\t\t{group
-\t\t\t\t\t\t\t\t{select
+\t\t\t\t\t\t\t\t{include
 \t\t\t\t\t\t\t\t\t{prop
 \t\t\t\t\t\t\t\t\t\t{prop cheat_mine_drop}
 \t\t\t\t\t\t\t\t\t}
@@ -1594,7 +1599,7 @@ def patch_mi_content(raw_txt, label):
 \t\t\t\t\t\t\t\t\t\t{source advanced}
 \t\t\t\t\t\t\t\t\t\t{ignore_captured_by_user 0}
 \t\t\t\t\t\t\t\t\t\t{group
-\t\t\t\t\t\t\t\t\t\t\t{select
+\t\t\t\t\t\t\t\t\t\t\t{include
 \t\t\t\t\t\t\t\t\t\t\t\t{prop
 \t\t\t\t\t\t\t\t\t\t\t\t\t{prop cheatsmod_inf_ammo}
 \t\t\t\t\t\t\t\t\t\t\t\t}
@@ -1605,7 +1610,7 @@ def patch_mi_content(raw_txt, label):
 \t\t\t\t\t\t\t\t\t{source advanced}
 \t\t\t\t\t\t\t\t\t{ignore_captured_by_user 0}
 \t\t\t\t\t\t\t\t\t{group
-\t\t\t\t\t\t\t\t\t\t{select
+\t\t\t\t\t\t\t\t\t\t{include
 \t\t\t\t\t\t\t\t\t\t\t{prop
 \t\t\t\t\t\t\t\t\t\t\t\t{prop cheatsmod_inf_ammo}
 \t\t\t\t\t\t\t\t\t\t\t}
@@ -1667,8 +1672,6 @@ def patch_mi_content(raw_txt, label):
 {infammo_sel_7}
 \t\t\t\t\t\t\t\t{{impregnability full}}
 \t\t\t\t\t\t\t\t{{tag_add "cheatsmod_inf-ammo"}}
-\t\t\t\t\t\t\t\t{{tag_remove hidden}}
-\t\t\t\t\t\t\t\t{{inactive off}}
 \t\t\t\t\t\t\t}}
 {chr(10).join(infammo_player_blocks)}
 \t\t\t\t\t\t}}
@@ -1727,6 +1730,23 @@ def patch_mi_content(raw_txt, label):
     # Verify zero flat {player "..."} inside {select/{include/{exclude (breaks GEM2 advanced group filtering!)
     flat_players = re.findall(r'\{(?:select|include|exclude)\n\t+\{player "[^"]+"\}', txt)
     assert not flat_players, f"Flat {{player}} inside advanced group found in {label}: {len(flat_players)}"
+
+    # Strict GEM2 {select} whitelist check: only inventory_items, mids, tag, zone, zone_ex are valid in {select}
+    valid_select = {"inventory_items", "mids", "tag", "zone", "zone_ex"}
+    illegal_select = {}
+    lines_chk = txt.splitlines()
+    for i_chk, l_chk in enumerate(lines_chk):
+        if l_chk.strip() == "{select":
+            ind = l_chk[: len(l_chk) - len(l_chk.lstrip("\t"))]
+            c_ind = ind + "\t"
+            for j_chk in range(i_chk + 1, len(lines_chk)):
+                if lines_chk[j_chk] == ind + "}":
+                    break
+                if lines_chk[j_chk].startswith(c_ind + "{") and not lines_chk[j_chk].startswith(c_ind + "\t"):
+                    kw = lines_chk[j_chk].strip().split()[0].lstrip("{").rstrip("}")
+                    if kw not in valid_select:
+                        illegal_select[kw] = illegal_select.get(kw, 0) + 1
+    assert not illegal_select, f"Illegal {{select}} children in {label}: {illegal_select}"
 
     # Verify zero Chinese characters remain
     cn_left = re.findall(r"[\u4e00-\u9fff]+", txt)
