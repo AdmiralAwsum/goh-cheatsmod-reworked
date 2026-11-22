@@ -295,7 +295,9 @@ def make_addexp_trigger():
 \t\t\t\t\t\t\t\t{{ignore_captured_by_user 0}}
 \t\t\t\t\t\t\t\t{{group
 \t\t\t\t\t\t\t\t\t{{select
-\t\t\t\t\t\t\t\t\t\t{{player "{p}"}}
+\t\t\t\t\t\t\t\t\t\t{{player
+\t\t\t\t\t\t\t\t\t\t\t{{player "{p}"}}
+\t\t\t\t\t\t\t\t\t\t}}
 \t\t\t\t\t\t\t\t\t}}
 \t\t\t\t\t\t\t\t\t{{exclude
 \t\t\t\t\t\t\t\t\t\t{{state
@@ -478,7 +480,9 @@ def make_godmode_triggers():
 \t\t\t\t\t\t\t\t{{ignore_captured_by_user 0}}
 \t\t\t\t\t\t\t\t{{group
 \t\t\t\t\t\t\t\t\t{{select
-\t\t\t\t\t\t\t\t\t\t{{player "{p}"}}
+\t\t\t\t\t\t\t\t\t\t{{player
+\t\t\t\t\t\t\t\t\t\t\t{{player "{p}"}}
+\t\t\t\t\t\t\t\t\t\t}}
 \t\t\t\t\t\t\t\t\t}}
 \t\t\t\t\t\t\t\t\t{{exclude
 \t\t\t\t\t\t\t\t\t\t{{tag
@@ -633,7 +637,9 @@ def make_repair_trigger():
 \t\t\t\t\t\t\t\t{{ignore_captured_by_user 0}}
 \t\t\t\t\t\t\t\t{{group
 \t\t\t\t\t\t\t\t\t{{select
-\t\t\t\t\t\t\t\t\t\t{{player "{p}"}}
+\t\t\t\t\t\t\t\t\t\t{{player
+\t\t\t\t\t\t\t\t\t\t\t{{player "{p}"}}
+\t\t\t\t\t\t\t\t\t\t}}
 \t\t\t\t\t\t\t\t\t}}
 \t\t\t\t\t\t\t\t\t{{include
 \t\t\t\t\t\t\t\t\t\t{{prop
@@ -770,7 +776,9 @@ def make_aimrange_trigger():
 \t\t\t\t\t\t\t\t{{ignore_captured_by_user 0}}
 \t\t\t\t\t\t\t\t{{group
 \t\t\t\t\t\t\t\t\t{{select
-\t\t\t\t\t\t\t\t\t\t{{player "{p}"}}
+\t\t\t\t\t\t\t\t\t\t{{player
+\t\t\t\t\t\t\t\t\t\t\t{{player "{p}"}}
+\t\t\t\t\t\t\t\t\t\t}}
 \t\t\t\t\t\t\t\t\t}}
 \t\t\t\t\t\t\t\t\t{{exclude
 \t\t\t\t\t\t\t\t\t\t{{tag
@@ -1449,10 +1457,17 @@ def patch_mi_content(raw_txt, label):
         txt,
     )
 
-    # Ensure bare {selector {player "X"}} in actor_state/entity_state excludes dead & inactive actors
+    # Ensure bare {selector {player "X"}} in actor_state/entity_state excludes dead & inactive actors (valid nested {player})
     txt = re.sub(
         r'(\t+)\{selector\n\1\t\{player "(\d)"\}\n\1\}',
-        r'\1{selector\n\1\t{source advanced}\n\1\t{ignore_captured_by_user 0}\n\1\t{group\n\1\t\t{select\n\1\t\t\t{player "\2"}\n\1\t\t}\n\1\t\t{exclude\n\1\t\t\t{state\n\1\t\t\t\t{state dead}\n\1\t\t\t}\n\1\t\t\t{state\n\1\t\t\t\t{state inactive}\n\1\t\t\t}\n\1\t\t}\n\1\t}\n\1}',
+        r'\1{selector\n\1\t{source advanced}\n\1\t{ignore_captured_by_user 0}\n\1\t{group\n\1\t\t{select\n\1\t\t\t{player\n\1\t\t\t\t{player "\2"}\n\1\t\t\t}\n\1\t\t}\n\1\t\t{exclude\n\1\t\t\t{state\n\1\t\t\t\t{state dead}\n\1\t\t\t}\n\1\t\t\t{state\n\1\t\t\t\t{state inactive}\n\1\t\t\t}\n\1\t\t}\n\1\t}\n\1}',
+        txt,
+    )
+
+    # Fix any flat {player "N"} directly inside {select/{include/{exclude into valid GEM2 nested {player {player "N"}}
+    txt = re.sub(
+        r'(\t+)\{(select|include|exclude)\n(\1\t)\{player "(\d)"\}\n(\1)\}',
+        r'\1{\2\n\3{player\n\3\t{player "\4"}\n\3}\n\5}',
         txt,
     )
 
@@ -1708,6 +1723,10 @@ def patch_mi_content(raw_txt, label):
         m = re.search(pat, txt, re.S)
         if m and '{"delay"' not in txt[m.end() : m.end() + 60]:
             txt = txt[: m.end()] + f'\t\t\t\t\t{{"delay"\n\t\t\t\t\t\t{{time {sec}}}\n\t\t\t\t\t}}\n' + txt[m.end() :]
+
+    # Verify zero flat {player "..."} inside {select/{include/{exclude (breaks GEM2 advanced group filtering!)
+    flat_players = re.findall(r'\{(?:select|include|exclude)\n\t+\{player "[^"]+"\}', txt)
+    assert not flat_players, f"Flat {{player}} inside advanced group found in {label}: {len(flat_players)}"
 
     # Verify zero Chinese characters remain
     cn_left = re.findall(r"[\u4e00-\u9fff]+", txt)
