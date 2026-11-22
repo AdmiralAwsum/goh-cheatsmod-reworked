@@ -318,21 +318,20 @@ def make_addexp_trigger():
 
 
 def make_auto_detect_player_trigger():
-    """Polls every 2s until the lowest-numbered active player spawns (SP=0, Conquest=0/3), then locks cheat_options-player$."""
-    cases = []
-    # Use a {switch} in ascending order 0..7 with a standard AND selector ({player} AND {state user_control} AND {state "not dead"}).
-    # In SP (Human=0, AI=1/2) and Conquest (Human=0 or 3, AI=1 or 4), the human host is always the lowest active slot,
-    # so stopping on the FIRST matching case prevents higher-numbered AI bot slots from overwriting cheat_options-player$.
-    for p in range(8):
-        cases.append(f"""\t\t\t\t\t\t{{"case"
+    """Polls every 1.5s until the human player slot is identified, then locks cheat_options-player$.
+
+    Priority 1 (Conquest native): read id_1st_player$ (set by GoH Conquest Lua OnGameStart at t=0s).
+    Priority 2 (SP / Skirmish / older Conquest mods like Valour): check user_control entities in
+    ascending slot order 0..7 while explicitly excluding Conquest AI slots (enemyid$, id_1st_enemy$, id_defenderbot$).
+    """
+    conquest_cases = []
+    for p in range(1, 8):
+        conquest_cases.append(f"""\t\t\t\t\t\t{{"case"
 \t\t\t\t\t\t\t{{condition
-\t\t\t\t\t\t\t\t{{type entities}}
-\t\t\t\t\t\t\t\t{{selector
-\t\t\t\t\t\t\t\t\t{{ignore_captured_by_user 0}}
-\t\t\t\t\t\t\t\t\t{{player "{p}"}}
-\t\t\t\t\t\t\t\t\t{{state user_control}}
-\t\t\t\t\t\t\t\t\t{{state "not dead"}}
-\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t{{type cmp_i}}
+\t\t\t\t\t\t\t\t{{var "id_1st_player$"}}
+\t\t\t\t\t\t\t\t{{op "=="}}
+\t\t\t\t\t\t\t\t{{value {p}}}
 \t\t\t\t\t\t\t}}
 \t\t\t\t\t\t\t{{"set_i"
 \t\t\t\t\t\t\t\t{{var "cheat_options-player$"}}
@@ -345,6 +344,77 @@ def make_auto_detect_player_trigger():
 \t\t\t\t\t\t\t\t{{value 1}}
 \t\t\t\t\t\t\t}}
 \t\t\t\t\t\t}}""")
+
+    fallback_checks = []
+    for p in range(8):
+        set_block = f"""\t\t\t\t\t\t\t\t{{"set_i"
+\t\t\t\t\t\t\t\t\t{{var "cheat_options-player$"}}
+\t\t\t\t\t\t\t\t\t{{op "="}}
+\t\t\t\t\t\t\t\t\t{{value {p}}}
+\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t{{"set_i"
+\t\t\t\t\t\t\t\t\t{{var "cheat_player_detected$"}}
+\t\t\t\t\t\t\t\t\t{{op "="}}
+\t\t\t\t\t\t\t\t\t{{value 1}}
+\t\t\t\t\t\t\t\t}}"""
+        if p == 0:
+            inner_guard = set_block
+        else:
+            inner_guard = f"""\t\t\t\t\t\t\t\t{{"if"
+\t\t\t\t\t\t\t\t\t{{condition
+\t\t\t\t\t\t\t\t\t\t{{type cmp_i}}
+\t\t\t\t\t\t\t\t\t\t{{var "enemyid$"}}
+\t\t\t\t\t\t\t\t\t\t{{op "!="}}
+\t\t\t\t\t\t\t\t\t\t{{value {p}}}
+\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t\t{{"if"
+\t\t\t\t\t\t\t\t\t\t{{condition
+\t\t\t\t\t\t\t\t\t\t\t{{type cmp_i}}
+\t\t\t\t\t\t\t\t\t\t\t{{var "id_1st_enemy$"}}
+\t\t\t\t\t\t\t\t\t\t\t{{op "!="}}
+\t\t\t\t\t\t\t\t\t\t\t{{value {p}}}
+\t\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t\t\t{{"if"
+\t\t\t\t\t\t\t\t\t\t\t{{condition
+\t\t\t\t\t\t\t\t\t\t\t\t{{type cmp_i}}
+\t\t\t\t\t\t\t\t\t\t\t\t{{var "id_defenderbot$"}}
+\t\t\t\t\t\t\t\t\t\t\t\t{{op "!="}}
+\t\t\t\t\t\t\t\t\t\t\t\t{{value {p}}}
+\t\t\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t\t\t\t{{"set_i"
+\t\t\t\t\t\t\t\t\t\t\t\t{{var "cheat_options-player$"}}
+\t\t\t\t\t\t\t\t\t\t\t\t{{op "="}}
+\t\t\t\t\t\t\t\t\t\t\t\t{{value {p}}}
+\t\t\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t\t\t\t{{"set_i"
+\t\t\t\t\t\t\t\t\t\t\t\t{{var "cheat_player_detected$"}}
+\t\t\t\t\t\t\t\t\t\t\t\t{{op "="}}
+\t\t\t\t\t\t\t\t\t\t\t\t{{value 1}}
+\t\t\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t}}"""
+        fallback_checks.append(f"""\t\t\t\t\t{{"if"
+\t\t\t\t\t\t{{condition
+\t\t\t\t\t\t\t{{type cmp_i}}
+\t\t\t\t\t\t\t{{var "cheat_player_detected$"}}
+\t\t\t\t\t\t\t{{op "=="}}
+\t\t\t\t\t\t\t{{value 0}}
+\t\t\t\t\t\t}}
+\t\t\t\t\t\t{{"if"
+\t\t\t\t\t\t\t{{condition
+\t\t\t\t\t\t\t\t{{type entities}}
+\t\t\t\t\t\t\t\t{{selector
+\t\t\t\t\t\t\t\t\t{{ignore_captured_by_user 0}}
+\t\t\t\t\t\t\t\t\t{{player "{p}"}}
+\t\t\t\t\t\t\t\t\t{{state user_control}}
+\t\t\t\t\t\t\t\t\t{{state "not dead"}}
+\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t}}
+{inner_guard}
+\t\t\t\t\t\t}}
+\t\t\t\t\t}}""")
+
     return f"""\t\t\t{{"cheats/auto_detect_player"
 \t\t\t\t{{condition
 \t\t\t\t\t{{terms
@@ -357,16 +427,177 @@ def make_auto_detect_player_trigger():
 \t\t\t\t}}
 \t\t\t\t{{actions
 \t\t\t\t\t{{"delay"
-\t\t\t\t\t\t{{time 2}}
+\t\t\t\t\t\t{{time 1.5}}
 \t\t\t\t\t}}
 \t\t\t\t\t{{"switch"
-{chr(10).join(cases)}
+{chr(10).join(conquest_cases)}
 \t\t\t\t\t}}
+{chr(10).join(fallback_checks)}
 \t\t\t\t\t{{"trigger"
 \t\t\t\t\t\t{{name "cheats/auto_detect_player"}}
 \t\t\t\t\t}}
 \t\t\t\t}}
 \t\t\t}}"""
+
+
+def make_godmode_triggers():
+    """Tag units given God Mode with cheat_godmode so toggling OFF or changing player clears EVERY buffed unit cleanly."""
+    on_blocks = []
+    for p in range(8):
+        on_blocks.append(f"""\t\t\t\t\t{{"if"
+\t\t\t\t\t\t{{condition
+\t\t\t\t\t\t\t{{type cmp_i}}
+\t\t\t\t\t\t\t{{var "cheat_options-player$"}}
+\t\t\t\t\t\t\t{{op "=="}}
+\t\t\t\t\t\t\t{{value {p}}}
+\t\t\t\t\t\t}}
+\t\t\t\t\t\t{{"entity_state"
+\t\t\t\t\t\t\t{{selector
+\t\t\t\t\t\t\t\t{{source advanced}}
+\t\t\t\t\t\t\t\t{{ignore_captured_by_user 0}}
+\t\t\t\t\t\t\t\t{{group
+\t\t\t\t\t\t\t\t\t{{select
+\t\t\t\t\t\t\t\t\t\t{{player "{p}"}}
+\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t\t{{exclude
+\t\t\t\t\t\t\t\t\t\t{{tag
+\t\t\t\t\t\t\t\t\t\t\t{{tag cheat_godmode}}
+\t\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t\t\t{{tag
+\t\t\t\t\t\t\t\t\t\t\t{{tag "cheatsmod_inf-ammo"}}
+\t\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t\t\t{{state
+\t\t\t\t\t\t\t\t\t\t\t{{state dead}}
+\t\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t\t\t{{tag
+\t\t\t\t\t\t\t\t\t\t\t{{tag hidden}}
+\t\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t{{impregnability full}}
+\t\t\t\t\t\t\t{{tag_add cheat_godmode}}
+\t\t\t\t\t\t}}
+\t\t\t\t\t}}""")
+
+    god_on = f"""\t\t\t{{"cheats/active/godmodecheckon"
+\t\t\t\t{{condition
+\t\t\t\t\t{{terms
+\t\t\t\t\t\t{{"1.cmp_i"
+\t\t\t\t\t\t\t{{var "cheat_godmode$"}}
+\t\t\t\t\t\t\t{{op "=="}}
+\t\t\t\t\t\t\t{{value 1}}
+\t\t\t\t\t\t}}
+\t\t\t\t\t}}
+\t\t\t\t}}
+\t\t\t\t{{actions
+\t\t\t\t\t{{"delay"
+\t\t\t\t\t\t{{time 1}}
+\t\t\t\t\t}}
+{chr(10).join(on_blocks)}
+\t\t\t\t\t{{"trigger"
+\t\t\t\t\t\t{{name "cheats/active/godmodecheckon"}}
+\t\t\t\t\t}}
+\t\t\t\t}}
+\t\t\t}}"""
+
+    god_off = """\t\t\t{"cheats/active/godmodecheckoff"
+\t\t\t\t{condition
+\t\t\t\t\t{terms
+\t\t\t\t\t\t{"1.cmp_i"
+\t\t\t\t\t\t\t{var "cheat_godmode$"}
+\t\t\t\t\t\t\t{op "!="}
+\t\t\t\t\t\t\t{value 1}
+\t\t\t\t\t\t}
+\t\t\t\t\t}
+\t\t\t\t}
+\t\t\t\t{actions
+\t\t\t\t\t{"delay"
+\t\t\t\t\t\t{time 0.5}
+\t\t\t\t\t}
+\t\t\t\t\t{"entity_state"
+\t\t\t\t\t\t{selector
+\t\t\t\t\t\t\t{ignore_captured_by_user 0}
+\t\t\t\t\t\t\t{tag cheat_godmode}
+\t\t\t\t\t\t}
+\t\t\t\t\t\t{impregnability disabled}
+\t\t\t\t\t\t{tag_remove cheat_godmode}
+\t\t\t\t\t}
+\t\t\t\t\t{"trigger"
+\t\t\t\t\t\t{name "cheats/active/godmodecheckoff"}
+\t\t\t\t\t}
+\t\t\t\t}
+\t\t\t}"""
+
+    god_toggle = """\t\t\t{"cheats/godmode"
+\t\t\t\t{condition
+\t\t\t\t\t{terms
+\t\t\t\t\t\t{"1.event"
+\t\t\t\t\t\t\t{id "cheats/godmode"}
+\t\t\t\t\t\t}
+\t\t\t\t\t}
+\t\t\t\t}
+\t\t\t\t{actions
+\t\t\t\t\t{"switch"
+\t\t\t\t\t\t{"case"
+\t\t\t\t\t\t\t{condition
+\t\t\t\t\t\t\t\t{type cmp_i}
+\t\t\t\t\t\t\t\t{var "cheat_godmode$"}
+\t\t\t\t\t\t\t\t{op "=="}
+\t\t\t\t\t\t\t\t{value 0}
+\t\t\t\t\t\t\t}
+\t\t\t\t\t\t\t{"set_i"
+\t\t\t\t\t\t\t\t{var "cheat_godmode$"}
+\t\t\t\t\t\t\t\t{op "="}
+\t\t\t\t\t\t\t\t{value 1}
+\t\t\t\t\t\t\t}
+\t\t\t\t\t\t\t{"talk"
+\t\t\t\t\t\t\t\t{selector
+\t\t\t\t\t\t\t\t\t{tag cheat_say}
+\t\t\t\t\t\t\t\t}
+\t\t\t\t\t\t\t\t{text c_godmode_0}
+\t\t\t\t\t\t\t}
+\t\t\t\t\t\t}
+\t\t\t\t\t\t{"case"
+\t\t\t\t\t\t\t{condition
+\t\t\t\t\t\t\t\t{type cmp_i}
+\t\t\t\t\t\t\t\t{var "cheat_godmode$"}
+\t\t\t\t\t\t\t\t{op "=="}
+\t\t\t\t\t\t\t\t{value 1}
+\t\t\t\t\t\t\t}
+\t\t\t\t\t\t\t{"set_i"
+\t\t\t\t\t\t\t\t{var "cheat_godmode$"}
+\t\t\t\t\t\t\t\t{op "="}
+\t\t\t\t\t\t\t\t{value 0}
+\t\t\t\t\t\t\t}
+\t\t\t\t\t\t\t{"entity_state"
+\t\t\t\t\t\t\t\t{selector
+\t\t\t\t\t\t\t\t\t{ignore_captured_by_user 0}
+\t\t\t\t\t\t\t\t\t{tag cheat_godmode}
+\t\t\t\t\t\t\t\t}
+\t\t\t\t\t\t\t\t{impregnability disabled}
+\t\t\t\t\t\t\t\t{tag_remove cheat_godmode}
+\t\t\t\t\t\t\t}
+\t\t\t\t\t\t\t{"talk"
+\t\t\t\t\t\t\t\t{selector
+\t\t\t\t\t\t\t\t\t{ignore_captured_by_user 0}
+\t\t\t\t\t\t\t\t\t{tag cheat_say}
+\t\t\t\t\t\t\t\t}
+\t\t\t\t\t\t\t\t{text "mission/singlecheats/c_deactivated_0"}
+\t\t\t\t\t\t\t}
+\t\t\t\t\t\t}
+\t\t\t\t\t}
+\t\t\t\t\t{"event"
+\t\t\t\t\t\t{event "cheats/godmode"}
+\t\t\t\t\t\t{mode reset}
+\t\t\t\t\t\t{delay 0}
+\t\t\t\t\t}
+\t\t\t\t\t{"trigger"
+\t\t\t\t\t\t{name "cheats/godmode"}
+\t\t\t\t\t}
+\t\t\t\t}
+\t\t\t}"""
+    return god_on, god_off, god_toggle
 
 
 def make_repair_trigger():
@@ -1161,6 +1392,18 @@ def patch_mi_content(raw_txt, label):
         txt, ok2 = replace_trigger_block(txt, '{"cheats/destroyarmor"', make_destroyarmor_trigger())
     txt, ok3 = replace_trigger_block(txt, '{"cheats/active/aimrange"', make_aimrange_trigger())
     txt, _ = replace_trigger_block(txt, '{"cheats/active/aimrange_off"', make_aimrange_off_trigger())
+    god_on, god_off, god_toggle = make_godmode_triggers()
+    txt, ok_gon = replace_trigger_block(txt, '{"cheats/active/godmodecheckon"', god_on)
+    txt, ok_goff = replace_trigger_block(txt, '{"cheats/active/godmodecheckoff"', god_off)
+    txt, ok_gtog = replace_trigger_block(txt, '{"cheats/godmode"', god_toggle)
+    assert ok_gon and ok_goff and ok_gtog, f"Godmode trigger replace failed in {label}: {ok_gon},{ok_goff},{ok_gtog}"
+
+    # When user manually switches Player slot via cheats/options/player, lock auto-detect and strip active godmode/aimrange from old slot
+    player_opt_hdr = '{"cheats/options/player"\n\t\t\t\t{condition\n\t\t\t\t\t{terms\n\t\t\t\t\t\t{"1.event"\n\t\t\t\t\t\t\t{id "cheats/settings/player"}\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t\t{actions\n'
+    player_opt_cleanup = '\t\t\t\t\t{"set_i"\n\t\t\t\t\t\t{var "cheat_player_detected$"}\n\t\t\t\t\t\t{op "="}\n\t\t\t\t\t\t{value 1}\n\t\t\t\t\t}\n\t\t\t\t\t{"entity_state"\n\t\t\t\t\t\t{selector\n\t\t\t\t\t\t\t{ignore_captured_by_user 0}\n\t\t\t\t\t\t\t{tag cheat_godmode}\n\t\t\t\t\t\t}\n\t\t\t\t\t\t{impregnability disabled}\n\t\t\t\t\t\t{tag_remove cheat_godmode}\n\t\t\t\t\t}\n\t\t\t\t\t{"entity_state"\n\t\t\t\t\t\t{selector\n\t\t\t\t\t\t\t{ignore_captured_by_user 0}\n\t\t\t\t\t\t\t{tag cheat_aimrange}\n\t\t\t\t\t\t}\n\t\t\t\t\t\t{tag_remove cheat_aimrange}\n\t\t\t\t\t}\n'
+    assert player_opt_hdr in txt, f"cheats/options/player header not found in {label}"
+    if player_opt_cleanup not in txt:
+        txt = txt.replace(player_opt_hdr, player_opt_hdr + player_opt_cleanup, 1)
 
     # 9. Upgrade cheats/units/mine and cheats/units/mine_ap to spawn 8 armed mines per click
     # Fix waypoint buttons to use eventEnd (fires AFTER placing waypoint 30001 on the ground!)
@@ -1285,6 +1528,7 @@ def patch_mi_content(raw_txt, label):
 \t\t\t\t\t\t\t\t\t\t{{ignore_captured_by_user 0}}
 \t\t\t\t\t\t\t\t\t\t{{tag "cheatsmod_inf-ammo"}}
 \t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t\t{{operation set}}
 \t\t\t\t\t\t\t\t\t{{player "{p}"}}
 \t\t\t\t\t\t\t\t}}
 \t\t\t\t\t\t\t}}""")
