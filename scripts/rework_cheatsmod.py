@@ -256,66 +256,10 @@ def rewrite_supply_and_entities():
 
 
 def make_addexp_trigger():
+    # Promote ONLY the active cheat_options-player$ slot (never AI bots!).
+    # Omit {prop human} filter so actor_state targets all alive entities owned by the player
+    # (infantry, gun crews, open-top crews, and vehicles) without excluding inactive/linked crews.
     blocks = []
-    # 1. Promote ALL human-controlled players' infantry AND linked vehicle/gun crews (Solo & Co-op!)
-    # Check which player slots (0..7) own any user_control unit (infantry or vehicle), then promote all {prop human}
-    # owned by that player (excluding dead and hidden templates, keeping linked/seated vehicle crews!).
-    for p in range(8):
-        blocks.append(f"""\t\t\t\t\t{{"if"
-\t\t\t\t\t\t{{condition
-\t\t\t\t\t\t\t{{type entities}}
-\t\t\t\t\t\t\t{{selector
-\t\t\t\t\t\t\t\t{{source advanced}}
-\t\t\t\t\t\t\t\t{{ignore_captured_by_user 0}}
-\t\t\t\t\t\t\t\t{{group
-\t\t\t\t\t\t\t\t\t{{select
-\t\t\t\t\t\t\t\t\t\t{{player "{p}"}}
-\t\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t\t\t{{include
-\t\t\t\t\t\t\t\t\t\t{{state
-\t\t\t\t\t\t\t\t\t\t\t{{state user_control}}
-\t\t\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t\t\t{{exclude
-\t\t\t\t\t\t\t\t\t\t{{state
-\t\t\t\t\t\t\t\t\t\t\t{{state dead}}
-\t\t\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t\t\t\t{{tag
-\t\t\t\t\t\t\t\t\t\t\t{{tag hidden}}
-\t\t\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t}}
-\t\t\t\t\t\t{{"actor_state"
-\t\t\t\t\t\t\t{{selector
-\t\t\t\t\t\t\t\t{{source advanced}}
-\t\t\t\t\t\t\t\t{{ignore_captured_by_user 0}}
-\t\t\t\t\t\t\t\t{{group
-\t\t\t\t\t\t\t\t\t{{select
-\t\t\t\t\t\t\t\t\t\t{{player "{p}"}}
-\t\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t\t\t{{include
-\t\t\t\t\t\t\t\t\t\t{{prop
-\t\t\t\t\t\t\t\t\t\t\t{{prop human}}
-\t\t\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t\t\t{{exclude
-\t\t\t\t\t\t\t\t\t\t{{state
-\t\t\t\t\t\t\t\t\t\t\t{{state dead}}
-\t\t\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t\t\t\t{{tag
-\t\t\t\t\t\t\t\t\t\t\t{{tag hidden}}
-\t\t\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t{{human
-\t\t\t\t\t\t\t\t{{veterancy 8}}
-\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t}}
-\t\t\t\t\t}}""")
-    # 2. Also honor manual cheat_options-player$ override
     for p in range(8):
         blocks.append(f"""\t\t\t\t\t{{"if"
 \t\t\t\t\t\t{{condition
@@ -331,11 +275,6 @@ def make_addexp_trigger():
 \t\t\t\t\t\t\t\t{{group
 \t\t\t\t\t\t\t\t\t{{select
 \t\t\t\t\t\t\t\t\t\t{{player "{p}"}}
-\t\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t\t\t{{include
-\t\t\t\t\t\t\t\t\t\t{{prop
-\t\t\t\t\t\t\t\t\t\t\t{{prop human}}
-\t\t\t\t\t\t\t\t\t\t}}
 \t\t\t\t\t\t\t\t\t}}
 \t\t\t\t\t\t\t\t\t{{exclude
 \t\t\t\t\t\t\t\t\t\t{{state
@@ -379,47 +318,33 @@ def make_addexp_trigger():
 
 
 def make_auto_detect_player_trigger():
-    """Polls every 2s until at least one human player unit (user_control) spawns, then sets cheat_options-player$."""
-    user_checks = []
-    # Check 7..2, then 0, then 1 so Player 1 (Conquest/MP) or Player 0 (SP) wins cleanly
-    for p in [7, 6, 5, 4, 3, 2, 0, 1]:
-        user_checks.append(f"""\t\t\t\t\t{{"if"
-\t\t\t\t\t\t{{condition
-\t\t\t\t\t\t\t{{type entities}}
-\t\t\t\t\t\t\t{{selector
-\t\t\t\t\t\t\t\t{{source advanced}}
-\t\t\t\t\t\t\t\t{{ignore_captured_by_user 0}}
-\t\t\t\t\t\t\t\t{{group
-\t\t\t\t\t\t\t\t\t{{select
-\t\t\t\t\t\t\t\t\t\t{{player "{p}"}}
-\t\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t\t\t{{include
-\t\t\t\t\t\t\t\t\t\t{{state
-\t\t\t\t\t\t\t\t\t\t\t{{state user_control}}
-\t\t\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t\t\t{{exclude
-\t\t\t\t\t\t\t\t\t\t{{state
-\t\t\t\t\t\t\t\t\t\t\t{{state dead}}
-\t\t\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t\t\t\t{{state
-\t\t\t\t\t\t\t\t\t\t\t{{state inactive}}
-\t\t\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t\t\t}}
+    """Polls every 2s until the lowest-numbered active player spawns (SP=0, Conquest=0/3), then locks cheat_options-player$."""
+    cases = []
+    # Use a {switch} in ascending order 0..7 with a standard AND selector ({player} AND {state user_control} AND {state "not dead"}).
+    # In SP (Human=0, AI=1/2) and Conquest (Human=0 or 3, AI=1 or 4), the human host is always the lowest active slot,
+    # so stopping on the FIRST matching case prevents higher-numbered AI bot slots from overwriting cheat_options-player$.
+    for p in range(8):
+        cases.append(f"""\t\t\t\t\t\t{{"case"
+\t\t\t\t\t\t\t{{condition
+\t\t\t\t\t\t\t\t{{type entities}}
+\t\t\t\t\t\t\t\t{{selector
+\t\t\t\t\t\t\t\t\t{{ignore_captured_by_user 0}}
+\t\t\t\t\t\t\t\t\t{{player "{p}"}}
+\t\t\t\t\t\t\t\t\t{{state user_control}}
+\t\t\t\t\t\t\t\t\t{{state "not dead"}}
 \t\t\t\t\t\t\t\t}}
 \t\t\t\t\t\t\t}}
-\t\t\t\t\t\t}}
-\t\t\t\t\t\t{{"set_i"
-\t\t\t\t\t\t\t{{var "cheat_options-player$"}}
-\t\t\t\t\t\t\t{{op "="}}
-\t\t\t\t\t\t\t{{value {p}}}
-\t\t\t\t\t\t}}
-\t\t\t\t\t\t{{"set_i"
-\t\t\t\t\t\t\t{{var "cheat_player_detected$"}}
-\t\t\t\t\t\t\t{{op "="}}
-\t\t\t\t\t\t\t{{value 1}}
-\t\t\t\t\t\t}}
-\t\t\t\t\t}}""")
+\t\t\t\t\t\t\t{{"set_i"
+\t\t\t\t\t\t\t\t{{var "cheat_options-player$"}}
+\t\t\t\t\t\t\t\t{{op "="}}
+\t\t\t\t\t\t\t\t{{value {p}}}
+\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t{{"set_i"
+\t\t\t\t\t\t\t\t{{var "cheat_player_detected$"}}
+\t\t\t\t\t\t\t\t{{op "="}}
+\t\t\t\t\t\t\t\t{{value 1}}
+\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t}}""")
     return f"""\t\t\t{{"cheats/auto_detect_player"
 \t\t\t\t{{condition
 \t\t\t\t\t{{terms
@@ -434,7 +359,9 @@ def make_auto_detect_player_trigger():
 \t\t\t\t\t{{"delay"
 \t\t\t\t\t\t{{time 2}}
 \t\t\t\t\t}}
-{chr(10).join(user_checks)}
+\t\t\t\t\t{{"switch"
+{chr(10).join(cases)}
+\t\t\t\t\t}}
 \t\t\t\t\t{{"trigger"
 \t\t\t\t\t\t{{name "cheats/auto_detect_player"}}
 \t\t\t\t\t}}
@@ -445,35 +372,6 @@ def make_auto_detect_player_trigger():
 def make_repair_trigger():
     comps = ["body", "turret", "gun", "engine", "trackleft", "trackright", "wheel", "shield", "mantlet", "cabin"]
     blocks = []
-    # Always repair all human-controlled vehicles (Solo & Co-op) via {state user_control}
-    uc_cmds = []
-    for c in comps:
-        uc_cmds.append(f"""\t\t\t\t\t{{"actor_component"
-\t\t\t\t\t\t{{selector
-\t\t\t\t\t\t\t{{source advanced}}
-\t\t\t\t\t\t\t{{ignore_captured_by_user 0}}
-\t\t\t\t\t\t\t{{group
-\t\t\t\t\t\t\t\t{{select
-\t\t\t\t\t\t\t\t\t{{state
-\t\t\t\t\t\t\t\t\t\t{{state user_control}}
-\t\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t\t{{include
-\t\t\t\t\t\t\t\t\t{{prop
-\t\t\t\t\t\t\t\t\t\t{{prop vehicle}}
-\t\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t\t{{exclude
-\t\t\t\t\t\t\t\t\t{{state
-\t\t\t\t\t\t\t\t\t\t{{state "dead inactive"}}
-\t\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t}}
-\t\t\t\t\t\t{{component {c}}}
-\t\t\t\t\t\t{{state work}}
-\t\t\t\t\t}}""")
-    blocks.append(chr(10).join(uc_cmds))
     for p in range(8):
         comp_cmds = []
         for c in comps:
@@ -484,9 +382,6 @@ def make_repair_trigger():
 \t\t\t\t\t\t\t\t{{group
 \t\t\t\t\t\t\t\t\t{{select
 \t\t\t\t\t\t\t\t\t\t{{player "{p}"}}
-\t\t\t\t\t\t\t\t\t\t{{tag
-\t\t\t\t\t\t\t\t\t\t\t{{tag _user}}
-\t\t\t\t\t\t\t\t\t\t}}
 \t\t\t\t\t\t\t\t\t}}
 \t\t\t\t\t\t\t\t\t{{include
 \t\t\t\t\t\t\t\t\t\t{{prop
@@ -495,7 +390,10 @@ def make_repair_trigger():
 \t\t\t\t\t\t\t\t\t}}
 \t\t\t\t\t\t\t\t\t{{exclude
 \t\t\t\t\t\t\t\t\t\t{{state
-\t\t\t\t\t\t\t\t\t\t\t{{state "dead inactive"}}
+\t\t\t\t\t\t\t\t\t\t\t{{state dead}}
+\t\t\t\t\t\t\t\t\t\t}}
+\t\t\t\t\t\t\t\t\t\t{{tag
+\t\t\t\t\t\t\t\t\t\t\t{{tag hidden}}
 \t\t\t\t\t\t\t\t\t\t}}
 \t\t\t\t\t\t\t\t\t}}
 \t\t\t\t\t\t\t\t}}
@@ -604,60 +502,8 @@ def make_destroyarmor_trigger():
 
 
 def make_aimrange_trigger():
-    # Match addexp's dual targeting: every player owning active user_control units (Solo & Co-op)
-    # PLUS manual cheat_options-player$ override. Exclude dead/hidden (keep manned/linked units!).
+    # Tag ONLY the selected cheat_options-player$ slot so AI bots in Conquest/Skirmish NEVER receive Range & Accuracy!
     blocks = []
-    for p in range(8):
-        blocks.append(f"""\t\t\t\t\t{{"if"
-\t\t\t\t\t\t{{condition
-\t\t\t\t\t\t\t{{type entities}}
-\t\t\t\t\t\t\t{{selector
-\t\t\t\t\t\t\t\t{{source advanced}}
-\t\t\t\t\t\t\t\t{{ignore_captured_by_user 0}}
-\t\t\t\t\t\t\t\t{{group
-\t\t\t\t\t\t\t\t\t{{select
-\t\t\t\t\t\t\t\t\t\t{{player "{p}"}}
-\t\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t\t\t{{include
-\t\t\t\t\t\t\t\t\t\t{{state
-\t\t\t\t\t\t\t\t\t\t\t{{state user_control}}
-\t\t\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t\t\t{{exclude
-\t\t\t\t\t\t\t\t\t\t{{state
-\t\t\t\t\t\t\t\t\t\t\t{{state dead}}
-\t\t\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t\t\t\t{{tag
-\t\t\t\t\t\t\t\t\t\t\t{{tag hidden}}
-\t\t\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t}}
-\t\t\t\t\t\t{{"entity_state"
-\t\t\t\t\t\t\t{{selector
-\t\t\t\t\t\t\t\t{{source advanced}}
-\t\t\t\t\t\t\t\t{{ignore_captured_by_user 0}}
-\t\t\t\t\t\t\t\t{{group
-\t\t\t\t\t\t\t\t\t{{select
-\t\t\t\t\t\t\t\t\t\t{{player "{p}"}}
-\t\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t\t\t{{exclude
-\t\t\t\t\t\t\t\t\t\t{{tag
-\t\t\t\t\t\t\t\t\t\t\t{{tag cheat_aimrange}}
-\t\t\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t\t\t\t{{state
-\t\t\t\t\t\t\t\t\t\t\t{{state dead}}
-\t\t\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t\t\t\t{{tag
-\t\t\t\t\t\t\t\t\t\t\t{{tag hidden}}
-\t\t\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t}}
-\t\t\t\t\t\t\t{{tag_add cheat_aimrange}}
-\t\t\t\t\t\t}}
-\t\t\t\t\t}}""")
     for p in range(8):
         blocks.append(f"""\t\t\t\t\t{{"if"
 \t\t\t\t\t\t{{condition
@@ -1468,18 +1314,20 @@ def patch_mi_content(raw_txt, label):
         txt = txt.replace(old_infammo_off, new_infammo_off, 1)
 
     # 11. Add {delay 1} to continuous triggers (godmodecheckon, weakenemy, fuel_on) so they don't run 60x/sec
-    #     AND prepend {state user_control} blocks to godmodecheckon & fuel_on so they always work automatically!
+    #     AND strip any legacy blanket {state user_control} blocks so AI bots in Conquest/Skirmish are NEVER buffed!
     god_uc = '\t\t\t\t\t{"entity_state"\n\t\t\t\t\t\t{selector\n\t\t\t\t\t\t\t{source advanced}\n\t\t\t\t\t\t\t{ignore_captured_by_user 0}\n\t\t\t\t\t\t\t{group\n\t\t\t\t\t\t\t\t{select\n\t\t\t\t\t\t\t\t\t{state\n\t\t\t\t\t\t\t\t\t\t{state user_control}\n\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}\n\t\t\t\t\t\t{impregnability full}\n\t\t\t\t\t}\n'
     fuel_uc = '\t\t\t\t\t{"actor_state"\n\t\t\t\t\t\t{selector\n\t\t\t\t\t\t\t{source advanced}\n\t\t\t\t\t\t\t{ignore_captured_by_user 0}\n\t\t\t\t\t\t\t{group\n\t\t\t\t\t\t\t\t{select\n\t\t\t\t\t\t\t\t\t{state\n\t\t\t\t\t\t\t\t\t\t{state user_control}\n\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t{exclude\n\t\t\t\t\t\t\t\t\t{state\n\t\t\t\t\t\t\t\t\t\t{state dead}\n\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t\t{state\n\t\t\t\t\t\t\t\t\t\t{state inactive}\n\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}\n\t\t\t\t\t\t{human\n\t\t\t\t\t\t\t{stamina 100}\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t\t{"inventory"\n\t\t\t\t\t\t{selector\n\t\t\t\t\t\t\t{source advanced}\n\t\t\t\t\t\t\t{ignore_captured_by_user 0}\n\t\t\t\t\t\t\t{group\n\t\t\t\t\t\t\t\t{select\n\t\t\t\t\t\t\t\t\t{state\n\t\t\t\t\t\t\t\t\t\t{state user_control}\n\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t{exclude\n\t\t\t\t\t\t\t\t\t{state\n\t\t\t\t\t\t\t\t\t\t{state dead}\n\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t\t{state\n\t\t\t\t\t\t\t\t\t\t{state inactive}\n\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}\n\t\t\t\t\t\t{action fuel}\n\t\t\t\t\t\t{amount 999}\n\t\t\t\t\t}\n'
-    for trig, sec, extra in [
-        ('{"cheats/active/godmodecheckon"', "1", god_uc),
-        ('{"cheats/active/weakenemy"', "1", ""),
-        ('{"cheats/active/fuel_on"', "1.5", fuel_uc),
+    txt = txt.replace(god_uc, "")
+    txt = txt.replace(fuel_uc, "")
+    for trig, sec in [
+        ('{"cheats/active/godmodecheckon"', "1"),
+        ('{"cheats/active/weakenemy"', "1"),
+        ('{"cheats/active/fuel_on"', "1.5"),
     ]:
         pat = re.escape(trig) + r'(\n\t\t\t\t\{condition.*?\{actions\n)'
         m = re.search(pat, txt, re.S)
         if m and '{"delay"' not in txt[m.end() : m.end() + 60]:
-            txt = txt[: m.end()] + f'\t\t\t\t\t{{"delay"\n\t\t\t\t\t\t{{time {sec}}}\n\t\t\t\t\t}}\n' + extra + txt[m.end() :]
+            txt = txt[: m.end()] + f'\t\t\t\t\t{{"delay"\n\t\t\t\t\t\t{{time {sec}}}\n\t\t\t\t\t}}\n' + txt[m.end() :]
 
     # Verify zero Chinese characters remain
     cn_left = re.findall(r"[\u4e00-\u9fff]+", txt)
