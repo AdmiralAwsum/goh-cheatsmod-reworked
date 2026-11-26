@@ -1,38 +1,39 @@
 {VeryHigh
-	{GlobalMaxCP 1550}
-	;{StageCP 110 160 220 260 310}
-	{StageCP 110 160 220 260 310}
-	{SpecialCP 100}					;// airstrikes special tab x2
-	{EmplacementCP 250}				;// buildable with engineer x5
-	{Bots 
-		{StartMP	1.00 min 500 attackerMultiplier 1.75}
-		{FinishMP	1.00 min 500 attackerMultiplier 1.75}
+	{GlobalMaxCP 550}
+	;{StageCP 50 60 70 80 90}
+	{StageCP 60 80 100 120 140}
+	{SpecialCP 50}					;// airstrikes special tab
+	{EmplacementCP 50}				;// buildable with engineer
+	{Bots
+		{StartMP	1.00 min 99999 attackerMultiplier 1.00}
+		{FinishMP	1.00 min 99999 attackerMultiplier 1.00}
 		{CP
-			{Base "0:150"} ;// seconds : CP
-			{RoundMultiplier "0:0.55 2:0.6 4:0.7 6:0.8 8:0.9 12:1.0"} ;// games played : multiplier for CP
-			{AttackMultiplier 100}
+			{Base "0:500"} ;// seconds : CP
+			{RoundMultiplier "0:100"} ;// games played : multiplier for CP
+			{AttackMultiplier 1}
 		}
 		{DefenseLevel
 			{level_1
-				{DefenseBudgetPlayer	0.5}	;// budget it multiplied by number of flags
-				{DefenseBudgetAI		0.5}	;// places defender units with bot StartMP * this factor (StartMP without attackermultiplier) for player side
+				{DefenseBudgetPlayer	0.01}	;// budget it multiplied by number of flags
+				{DefenseBudgetAI		0.001}	;// places defender units with bot StartMP * this factor (StartMP without attackermultiplier) for player side
 				{unlock games 0 progress 0.0}	;// number of games to unlock this level, or progress in percent (campaign progress bar)
 			}
 			{level_2							;// once level is reached previous level values are ignored only currently level is used
-				{DefenseBudgetPlayer	0.75}
-				{DefenseBudgetAI		0.75}
+				{DefenseBudgetPlayer	0.025}
+				{DefenseBudgetAI		0.001}
 				{unlock games 6 progress 0.5}
 			}
 			{level_3
-				{DefenseBudgetPlayer	1.0}
-				{DefenseBudgetAI		1.0}
+				{DefenseBudgetPlayer	0.05}
+				{DefenseBudgetAI		0.001}
 				{unlock games 16 progress 0.75}
 			}
 		}
 	}
-	{PaybackFactor 0.8}		;// MP paid back when loosing solider, squad or vehicle
-	{SellFactor 0.8}
-	{ScavengedVehicleSellFactor 0.8}		;// captured enemy vehicle 
+	;// {factor MP / SP / AP / RP} Assumes value of 1 if not defined. 
+	{PaybackFactor 0.8 0 0 0}		;// MP paid back when loosing solider, squad or vehicle
+	{SellFactor 0.8 0 0 0}
+	{ScavengedVehicleSellFactor 0.8 0 0 0}		;// captured enemy vehicle 
 	{RiskFactor
 		{Low
 			{BotResources 1.0}
@@ -54,7 +55,7 @@
 		{MP ;// Manpower (generic money)
 			{StartVal 1200}
 			{WinGain "1:300 4:350 6:400 8:500 10:700 12:900 14:1200"} ;// games played : MP gain
-			{LoseGain "1:50"}
+			{LoseGain "1:100"}
 			{MapRewards	;//Bonus resources on various game types (a game can only be one randomly chosen type). Types: Airfield, Ammodepot, Bonus, Factory, Research.
 				{Airfield	300}
 				{Ammodepot	300}

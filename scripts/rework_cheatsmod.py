@@ -1,3 +1,4 @@
+import glob
 import io
 import math
 import os
@@ -237,6 +238,8 @@ def rewrite_supply_and_entities():
             zout.writestr(f"inventory/mine_antitank_cheat/{fname}", data)
         zout.writestr("inventory/mine_antitank_cheat/mine_antitank_cheat.def", mine_at_def.encode("utf-8"))
         for fname, data in ap_assets.items():
+            if fname.lower() == "s_mine.mtl":
+                data = data.replace(b'{diffuse "mine_s_cheat"}', b'{diffuse "s_mine"}')
             zout.writestr(f"inventory/mine_s_cheat/{fname}", data)
         zout.writestr("inventory/mine_s_cheat/mine_s_cheat.def", mine_ap_def.encode("utf-8"))
         zout.writestr("service/ammo_cheatsmod_global/ammo_cheatsmod_global.def", ammo_global_def.encode("utf-8"))
@@ -348,18 +351,20 @@ def make_addexp_trigger():
 \t\t\t}}"""
 
 
-def make_auto_detect_player_trigger():
+def make_auto_detect_player_trigger(is_dcg=False):
     """Polls every 1.0s until the human player slot is identified, then locks cheat_options-player$ and cheat_enemyspawn$.
 
-    Priority 1 (Conquest native): read id_1st_player$ (set by GoH Conquest Lua OnGameStart at t=0s).
-    Priority 2 (SP / Skirmish / older Conquest mods): check user_control entities in slot order
-    1..7 then 0 (checking 1..7 first so neutral slot-0 entities never mask a Conquest/Skirmish player),
-    using a valid advanced selector excluding hidden/cheat_delete/inactive/dead template entities,
-    and explicitly excluding Conquest AI slots (enemyid$, id_1st_enemy$, id_defenderbot$).
+    When is_dcg=True (Conquest maps containing dcg_vars.inc):
+      Priority 1: read id_1st_player$ (set by GoH Conquest Lua OnGameStart at t=0s).
+      Priority 2: check user_control entities in slot order 1..7 then 0, excluding AI slots
+      (enemyid$, id_1st_enemy$, id_defenderbot$).
+    When is_dcg=False (Singleplayer / Skirmish / Frontlines without dcg_vars.inc):
+      Zero Conquest-only variable references — pure user_control entity detection in slot order 1..7 then 0.
     """
     conquest_cases = []
-    for p in range(1, 8):
-        conquest_cases.append(f"""\t\t\t\t\t\t{{"case"
+    if is_dcg:
+        for p in range(1, 8):
+            conquest_cases.append(f"""\t\t\t\t\t\t{{"case"
 \t\t\t\t\t\t\t{{condition
 \t\t\t\t\t\t\t\t{{type cmp_i}}
 \t\t\t\t\t\t\t\t{{var "id_1st_player$"}}
@@ -400,7 +405,7 @@ def make_auto_detect_player_trigger():
 \t\t\t\t\t\t\t\t\t{{op "="}}
 \t\t\t\t\t\t\t\t\t{{value 1}}
 \t\t\t\t\t\t\t\t}}"""
-        if p == 0:
+        if not is_dcg or p == 0:
             inner_guard = set_block
         else:
             inner_guard = f"""\t\t\t\t\t\t\t\t{{"if"
@@ -488,6 +493,12 @@ def make_auto_detect_player_trigger():
 \t\t\t\t\t\t}}
 \t\t\t\t\t}}""")
 
+    switch_block = (
+        f'\n\t\t\t\t\t{{"switch"\n{chr(10).join(conquest_cases)}\n\t\t\t\t\t}}'
+        if is_dcg
+        else ""
+    )
+
     return f"""\t\t\t{{"cheats/auto_detect_player"
 \t\t\t\t{{condition
 \t\t\t\t\t{{terms
@@ -501,10 +512,7 @@ def make_auto_detect_player_trigger():
 \t\t\t\t{{actions
 \t\t\t\t\t{{"delay"
 \t\t\t\t\t\t{{time 1.0}}
-\t\t\t\t\t}}
-\t\t\t\t\t{{"switch"
-{chr(10).join(conquest_cases)}
-\t\t\t\t\t}}
+\t\t\t\t\t}}{switch_block}
 {chr(10).join(fallback_checks)}
 \t\t\t\t\t{{"trigger"
 \t\t\t\t\t\t{{name "cheats/auto_detect_player"}}
@@ -1238,26 +1246,60 @@ def make_miner_trigger():
 \t\t\t}}"""
 
 
-def make_conquest_win_trigger():
-    return """\t\t\t{"cheats/active/conquest_win"
+def make_conquest_win_trigger(is_dcg=False):
+    win_action = (
+        '\t\t\t\t\t{"set_i"\n\t\t\t\t\t\t{var "gameover_request_player_win$"}\n\t\t\t\t\t\t{op "="}\n\t\t\t\t\t\t{value 1}\n\t\t\t\t\t}'
+        if is_dcg
+        else '\t\t\t\t\t{"gameover"\n\t\t\t\t\t\t{result win}\n\t\t\t\t\t\t{message "$/complete"}\n\t\t\t\t\t}'
+    )
+    return f"""\t\t\t{{"cheats/active/conquest_win"
+\t\t\t\t{{condition
+\t\t\t\t\t{{terms
+\t\t\t\t\t\t{{"1.event"
+\t\t\t\t\t\t\t{{id "cheats/conquest_win"}}
+\t\t\t\t\t\t}}
+\t\t\t\t\t}}
+\t\t\t\t}}
+\t\t\t\t{{actions
+{win_action}
+\t\t\t\t\t{{"sound"
+\t\t\t\t\t\t{{name "mission/task_fulfilled"}}
+\t\t\t\t\t}}
+\t\t\t\t\t{{"event"
+\t\t\t\t\t\t{{event "cheats/conquest_win"}}
+\t\t\t\t\t\t{{mode reset}}
+\t\t\t\t\t\t{{delay 0}}
+\t\t\t\t\t}}
+\t\t\t\t\t{{"delay"
+\t\t\t\t\t\t{{time 0.1}}
+\t\t\t\t\t}}
+\t\t\t\t\t{{"trigger"
+\t\t\t\t\t\t{{name "cheats/active/conquest_win"}}
+\t\t\t\t\t}}
+\t\t\t\t}}
+\t\t\t}}"""
+
+
+def make_money_trigger():
+    return """\t\t\t{"cheats/money"
 \t\t\t\t{condition
 \t\t\t\t\t{terms
 \t\t\t\t\t\t{"1.event"
-\t\t\t\t\t\t\t{id "cheats/conquest_win"}
+\t\t\t\t\t\t\t{id "cheat_money"}
 \t\t\t\t\t\t}
 \t\t\t\t\t}
 \t\t\t\t}
 \t\t\t\t{actions
-\t\t\t\t\t{"set_i"
-\t\t\t\t\t\t{var "gameover_request_player_win$"}
-\t\t\t\t\t\t{op "="}
-\t\t\t\t\t\t{value 1}
+\t\t\t\t\t{"reinforcement"
+\t\t\t\t\t\t{operation score_total}
+\t\t\t\t\t\t{score 99999}
 \t\t\t\t\t}
-\t\t\t\t\t{"sound"
-\t\t\t\t\t\t{name "mission/task_fulfilled"}
+\t\t\t\t\t{"reinforcement"
+\t\t\t\t\t\t{operation score_add}
+\t\t\t\t\t\t{score 1000}
 \t\t\t\t\t}
 \t\t\t\t\t{"event"
-\t\t\t\t\t\t{event "cheats/conquest_win"}
+\t\t\t\t\t\t{event "cheat_money"}
 \t\t\t\t\t\t{mode reset}
 \t\t\t\t\t\t{delay 0}
 \t\t\t\t\t}
@@ -1265,30 +1307,42 @@ def make_conquest_win_trigger():
 \t\t\t\t\t\t{time 0.1}
 \t\t\t\t\t}
 \t\t\t\t\t{"trigger"
-\t\t\t\t\t\t{name "cheats/active/conquest_win"}
+\t\t\t\t\t\t{name "cheats/money"}
 \t\t\t\t\t}
 \t\t\t\t}
 \t\t\t}"""
 
 
 def write_conquest_budget_files():
-    """Copy Increased call-in stages resources_*.set and boost Budget to 2000 CP + 2.0/s so all waves deploy immediately."""
-    ws_inc = r"D:\SteamLibrary\steamapps\workshop\content\400750\3370969203\resource\set\dynamic_campaign"
+    """Read vanilla v1.069.0 resources_*.set from gamelogic.pak and boost only {Budget} to 2000 CP + 2.0/s."""
+    gl_pak = os.path.join(GOH_DIR, "resource", "gamelogic.pak")
     out_dc = os.path.join(MOD, "resource", "set", "dynamic_campaign")
     os.makedirs(out_dc, exist_ok=True)
-    for fname in ("resources_low.set", "resources_standard.set", "resources_high.set", "resources_very_high.set"):
-        with open(os.path.join(ws_inc, fname), "r", encoding="utf-8", errors="replace") as f:
-            txt = f.read()
-        txt = re.sub(
+
+    def patch_budget_block(m):
+        blk = m.group(0)
+        blk, n1 = re.subn(
             r'\{Start\s+"[^"]+"\}',
             '{Start "0:2000 4:2000 8:2000 12:2000 16:2000 20:2000"}',
-            txt,
+            blk,
         )
-        txt = re.sub(r'\{PointsPerSecond\s+[0-9.]+\}', '{PointsPerSecond 2.0}', txt)
-        txt = re.sub(r'\{Limit\s+\d+\}', '{Limit 2000}', txt)
-        with open(os.path.join(out_dc, fname), "w", encoding="utf-8", newline="\r\n") as f:
-            f.write(txt)
-    print("Wrote 2000-CP Conquest Budget resources_*.set files.")
+        blk, n2 = re.subn(r'\{PointsPerSecond\s+[0-9.]+\}', '{PointsPerSecond 2.0}', blk)
+        blk, n3 = re.subn(r'\{Limit\s+\d+\}', '{Limit 2000}', blk)
+        assert n1 == 1 and n2 == 1 and n3 == 1, f"Unexpected Budget block fields: {n1},{n2},{n3}"
+        return blk
+
+    with zipfile.ZipFile(gl_pak, "r") as zgl:
+        for fname in ("resources_low.set", "resources_standard.set", "resources_high.set", "resources_very_high.set"):
+            txt = zgl.read(f"set/dynamic_campaign/{fname}").decode("utf-8", errors="replace").replace("\r\n", "\n")
+            assert re.search(r"\{PaybackFactor\s+[0-9.]+\s+0\s+0\s+0\}", txt), f"Missing v1.069.0 PaybackFactor 4-tuple in {fname}"
+            txt, nb = re.subn(r'\{Budget\b.*?\n\t\t\}', patch_budget_block, txt, flags=re.S)
+            assert nb == 1, f"Expected 1 {{Budget}} block in {fname}, got {nb}"
+            assert '{Start "0:2000 4:2000 8:2000 12:2000 16:2000 20:2000"}' in txt
+            assert "{PointsPerSecond 2.0}" in txt
+            assert "{Limit 2000}" in txt
+            with open(os.path.join(out_dc, fname), "w", encoding="utf-8", newline="") as f:
+                f.write(txt.replace("\n", "\r\n"))
+    print("Wrote vanilla v1.069.0-based 2000-CP Conquest Budget resources_*.set files.")
 
 
 def replace_trigger_block(txt, trigger_header, new_block):
@@ -1526,7 +1580,7 @@ def generate_custom_button_icons():
     print(f"Generated {len(icon_specs)} native-style 3-state TGA button icons in interface.pak.")
 
 
-def patch_mi_content(raw_txt, label):
+def patch_mi_content(raw_txt, label, is_dcg=False):
     txt = raw_txt.replace("\r\n", "\n")
 
     # 1. Strip all Chinese text from button labels
@@ -1606,7 +1660,7 @@ def patch_mi_content(raw_txt, label):
         "cheatspawnmenu_artillery": ('"Artillery"', None, '"Spawn towed artillery & AT/AA guns"'),
         "cheatspawnmenu_airplanes": ('"Aircraft"', None, '"Call in aircraft flyovers / air support"'),
         "cheatspawnmenu_mod_vehicles": ('"Mod Units"', None, '"Spawn custom mod vehicles & infantry configured via *_list.txt"'),
-        "cheat_addmoney": ('"+1000 MP"', None, '"Add +1000 Manpower / Reinforcement Points (Skirmish & Singleplayer)"'),
+        "cheat_addmoney": ('"+1000 SP Points"', None, '"Singleplayer & SP Skirmish only: add +1000 Reinforcement Score (Conquest already starts with 2000 CP call-in budget; Multiplayer MP is lobby-controlled)"'),
         "cheat_godmode_off": ('"God Mode"', None, '"Enable: make all your units and vehicles invulnerable"'),
         "cheat_godmode_on": ('"God Mode"', None, '"Disable: turn off God Mode"'),
         "cheat_infammo_off": ('"Infinite Ammo"', None, '"Enable: spawn a map-wide (500m) resupply aura refilling ammo & fuel"'),
@@ -1619,7 +1673,7 @@ def patch_mi_content(raw_txt, label):
         "cheatweakenemy": ('"Instakill"', None, '"Enable: reduce enemy soldier HP to 1 and enemy vehicle armor to 1%"'),
         "cheatweakenemyoff": ('"Instakill"', None, '"Disable: restore normal enemy HP and armor"'),
         "cheat_addexp": ('"Max Veterancy"', '"whitesnoop/cheats/veterancy"', '"One-shot: promote all currently alive friendly infantry, gun crews, and vehicle crews to Level 8"'),
-        "cheat_conquest_win": ('"Instant Win"', '"whitesnoop/cheats/win"', '"Immediately win the current Conquest battle with full victory rewards"'),
+        "cheat_conquest_win": ('"Instant Win"', '"whitesnoop/cheats/win"', '"Immediately win the current battle (Conquest victory with full rewards, or Singleplayer mission win)"'),
         "cheat_repair": ('"Repair Vehicles"', '"whitesnoop/cheats/repair"', '"Instantly repair & refuel all your vehicles, captured/stolen enemy vehicles, and all repairable battlefield wrecks"'),
         "cheat_destroyarmor": ('"Break Enemy Armor"', '"whitesnoop/cheats/destroyarmor"', '"Break gun, turret, engine & tracks on all enemy vehicles on the map"'),
         "cheat_explosion": ('"Explosion"', None, '"Click on the ground to trigger an explosion at cursor"'),
@@ -1730,7 +1784,7 @@ def patch_mi_content(raw_txt, label):
 
     # 7. Initialize cheat_options-player$ = 0 and explicitly reset one-shot events in cheats/set/vars idempotently
     vars_anchor = '\t\t\t\t\t{"set_i"\n\t\t\t\t\t\t{var "cheat_infammo$"}\n\t\t\t\t\t\t{op "="}\n\t\t\t\t\t\t{value 0}\n\t\t\t\t\t}'
-    vars_init_blk = (
+    old_vars_init_blk = (
         '\n\t\t\t\t\t{"set_i"\n\t\t\t\t\t\t{var "cheat_options-player$"}\n\t\t\t\t\t\t{op "="}\n\t\t\t\t\t\t{value 0}\n\t\t\t\t\t}'
         '\n\t\t\t\t\t{"set_i"\n\t\t\t\t\t\t{var "cheat_player_detected$"}\n\t\t\t\t\t\t{op "="}\n\t\t\t\t\t\t{value 0}\n\t\t\t\t\t}'
         '\n\t\t\t\t\t{"event"\n\t\t\t\t\t\t{event "cheats/addexp"}\n\t\t\t\t\t\t{mode reset}\n\t\t\t\t\t\t{delay 0}\n\t\t\t\t\t}'
@@ -1739,18 +1793,32 @@ def patch_mi_content(raw_txt, label):
         '\n\t\t\t\t\t{"event"\n\t\t\t\t\t\t{event "cheats/destroyarmor"}\n\t\t\t\t\t\t{mode reset}\n\t\t\t\t\t\t{delay 0}\n\t\t\t\t\t}'
         '\n\t\t\t\t\t{"event"\n\t\t\t\t\t\t{event "cheats/fast_miner"}\n\t\t\t\t\t\t{mode reset}\n\t\t\t\t\t\t{delay 0}\n\t\t\t\t\t}'
     )
-    txt = txt.replace(vars_init_blk, "")
+    vars_init_blk = (
+        old_vars_init_blk
+        + '\n\t\t\t\t\t{"event"\n\t\t\t\t\t\t{event "cheat_money"}\n\t\t\t\t\t\t{mode reset}\n\t\t\t\t\t\t{delay 0}\n\t\t\t\t\t}'
+    )
+    txt = txt.replace(vars_init_blk, "").replace(old_vars_init_blk, "")
     assert vars_anchor in txt, f"cheats/set/vars anchor not found in {label}"
     txt = txt.replace(vars_anchor, vars_anchor + vars_init_blk, 1)
 
-    # 8. Replace broken triggers idempotently + add auto_detect_player + conquest_win + fast_miner
+    # 8. Replace broken triggers idempotently + add auto_detect_player + conquest_win + fast_miner + money
     for dup_hdr in ('{"cheats/auto_detect_player"', '{"cheats/active/repair"', '{"cheats/active/conquest_win"', '{"cheats/units/fast_miner"'):
         txt, _ = replace_trigger_block(txt, dup_hdr, "")
     txt, ok1 = replace_trigger_block(
         txt,
         '{"cheats/active/addexp"',
-        make_auto_detect_player_trigger() + "\n" + make_addexp_trigger() + "\n" + make_repair_trigger() + "\n" + make_conquest_win_trigger() + "\n" + make_miner_trigger(),
+        make_auto_detect_player_trigger(is_dcg=is_dcg)
+        + "\n"
+        + make_addexp_trigger()
+        + "\n"
+        + make_repair_trigger()
+        + "\n"
+        + make_conquest_win_trigger(is_dcg=is_dcg)
+        + "\n"
+        + make_miner_trigger(),
     )
+    txt, ok_mon = replace_trigger_block(txt, '{"cheats/money"', make_money_trigger())
+    assert ok_mon, f"cheats/money replace failed in {label}"
     txt, ok2 = replace_trigger_block(txt, '{## "cheats/destroyarmor"', make_destroyarmor_trigger())
     if not ok2:
         txt, ok2 = replace_trigger_block(txt, '{"cheats/destroyarmor"', make_destroyarmor_trigger())
@@ -2142,7 +2210,20 @@ def patch_mi_content(raw_txt, label):
     closes = txt.count("}")
     assert opens == closes, f"Brace mismatch in {label}: {{={opens}, }}={closes}"
 
-    print(f"Patched {label}: addexp={ok1}, destroyarmor={ok2}, aimrange={ok3}, braces OK ({opens}), zero Chinese.")
+    # Verify strict variable scoping so non-Conquest maps never crash on undeclared Conquest variables
+    m_vars = re.search(r"\{vars\s*(.*?)\n\t\}", txt, re.S)
+    assert m_vars, f"Missing {{vars}} block in {label}"
+    declared_vars = set(re.findall(r'\{"([^"]+)"', m_vars.group(1)))
+    used_vars = set(re.findall(r'\{var "([^"]+?)\$"', txt))
+    undeclared = used_vars - declared_vars
+    allowed_dcg = (
+        {"id_1st_player", "enemyid", "id_1st_enemy", "id_defenderbot", "gameover_request_player_win"}
+        if is_dcg
+        else set()
+    )
+    assert undeclared <= allowed_dcg, f"Unexpected undeclared vars in {label} (is_dcg={is_dcg}): {sorted(undeclared - allowed_dcg)}"
+
+    print(f"Patched {label}: addexp={ok1}, destroyarmor={ok2}, aimrange={ok3}, braces OK ({opens}), vars OK (undeclared={sorted(undeclared)}), zero Chinese.")
     return txt.replace("\n", "\r\n")
 
 
@@ -2224,18 +2305,100 @@ def rewrite_cheatsmod_pak():
     with zipfile.ZipFile(cm_pak, "r") as zin, zipfile.ZipFile(tmp_cm, "w", compression=zipfile.ZIP_DEFLATED) as zout:
         for item in zin.infolist():
             nl = item.filename.lower()
-            if nl == "cheatsmod/extension.mod":
+            if nl == "cheatsmod/cheats_dcg.mi":
+                continue
+            elif nl == "cheatsmod/extension.mod":
                 zout.writestr(item.filename, ext_mod.replace("\n", "\r\n").encode("utf-8"))
             elif nl == "cheatsmod/option_tags.mi":
                 zout.writestr(item.filename, opt_tags.replace("\n", "\r\n").encode("utf-8"))
-            elif nl in ("cheatsmod/cheats.mi", "cheatsmod/m_cheats.mi"):
+            elif nl == "cheatsmod/cheats.mi":
                 raw = zin.read(item.filename).decode("utf-8", errors="replace")
-                patched = patch_mi_content(raw, item.filename)
+                patched = patch_mi_content(raw, "cheatsmod/cheats.mi", is_dcg=False)
+                zout.writestr("cheatsmod/cheats.mi", patched.encode("utf-8"))
+                patched_dcg = patch_mi_content(raw, "cheatsmod/cheats_dcg.mi", is_dcg=True)
+                zout.writestr("cheatsmod/cheats_dcg.mi", patched_dcg.encode("utf-8"))
+            elif nl == "cheatsmod/m_cheats.mi":
+                raw = zin.read(item.filename).decode("utf-8", errors="replace")
+                patched = patch_mi_content(raw, "cheatsmod/m_cheats.mi", is_dcg=False)
                 zout.writestr(item.filename, patched.encode("utf-8"))
             else:
                 zout.writestr(item, zin.read(item.filename))
     os.replace(tmp_cm, cm_pak)
     print("Rebuilt cheatsmod.pak successfully.")
+
+
+def rewrite_modtanks_entity_mi():
+    ent_mi_path = os.path.join(MOD, "resource", "modtanks_configuration", "entity.mi")
+    content = (
+        '\t{Entity "sdkfz7" 0xfe01        {Position 10 1}        {Player 0}        {MID 9801}    }    {Tags "csp_1" "cheat_delete" "hidden" "cheat_infantry_spawn" 0xfe01}\r\n'
+        '\t{Entity "pz35t" 0xfe02        {Position 20 1}        {Player 0}        {MID 9802}    }    {Tags "csp_2" "cheat_delete" "hidden" "cheat_infantry_spawn" 0xfe02}\r\n'
+        '\t{Entity "stug3g" 0xfe03        {Position 30 1}        {Player 0}        {MID 9803}    }    {Tags "csp_3" "cheat_delete" "hidden" "cheat_infantry_spawn" 0xfe03}\r\n'
+        '\t{Entity "tiger1hunt" 0xfe04        {Position 40 1}        {Player 0}        {MID 9804}    }    {Tags "csp_4" "cheat_delete" "hidden" "cheat_infantry_spawn" 0xfe04}\r\n'
+        '\t{Human "mp/ger/mid/flamer" 0xfe05        {Position 10 100}        {Player 0}        {MID 9805}    }    {Tags "hsp_1" "cheat_delete" "hidden" "cheat_infantry_spawn" 0xfe05}\r\n'
+        '\t{Human "mp/rus/mid/rifle" 0xfe06        {Position 20 100}        {Player 0}        {MID 9806}    }    {Tags "hsp_2" "cheat_delete" "hidden" "cheat_infantry_spawn" 0xfe06}\r\n'
+    )
+    os.makedirs(os.path.dirname(ent_mi_path), exist_ok=True)
+    with open(ent_mi_path, "w", encoding="utf-8", newline="") as f:
+        f.write(content)
+    print("Rewrote modtanks_configuration/entity.mi with unique non-colliding IDs (0xfe01..0xfe06).")
+
+
+def rebuild_map_paks():
+    """Rebuild single.pak (91 maps) and multi.pak (388 maps) cleanly from pure vanilla v1.069.0 + DLC paks."""
+    res_dir = os.path.join(GOH_DIR, "resource")
+    single_maps = {}
+    multi_maps = {}
+
+    def collect(pak_path, strip_prefix=""):
+        with zipfile.ZipFile(pak_path, "r") as z:
+            for item in z.infolist():
+                nl = item.filename.lower()
+                if not nl.endswith(".mi"):
+                    continue
+                rel = item.filename[len(strip_prefix) :] if strip_prefix and nl.startswith(strip_prefix) else item.filename
+                rel_l = rel.lower()
+                if rel_l.startswith("single/"):
+                    single_maps[rel] = (item, z.read(item.filename))
+                elif rel_l.startswith("multi/"):
+                    multi_maps[rel] = (item, z.read(item.filename))
+
+    collect(os.path.join(res_dir, "map", "single.pak"))
+    collect(os.path.join(res_dir, "map", "multi.pak"))
+    for dlc_pak in sorted(glob.glob(os.path.join(res_dir, "*dlc*.pak"))):
+        collect(dlc_pak, "map/")
+
+    def patch_and_write(out_pak, entries_dict, expected_total, expected_dcg):
+        tmp_pak = out_pak + ".tmp"
+        dcg_count = 0
+        non_dcg_count = 0
+        with zipfile.ZipFile(tmp_pak, "w", compression=zipfile.ZIP_DEFLATED) as zout:
+            for rel in sorted(entries_dict):
+                orig_item, raw = entries_dict[rel]
+                txt = raw.decode("utf-8", errors="replace").lstrip("\ufeff").replace("\r\n", "\n")
+                lines = txt.split("\n")
+                assert lines[0].lstrip().startswith("{mission"), f"Map {rel} does not start with {{mission"
+                is_dcg = "dcg_vars.inc" in txt
+                if is_dcg:
+                    dcg_count += 1
+                    inc_line = '(include "/map/cheatsmod/cheats_dcg.mi")'
+                else:
+                    non_dcg_count += 1
+                    inc_line = '(include "/map/cheatsmod/cheats.mi")'
+                assert "type_3a_mine" not in txt, f"Found MACE-only type_3a_mine in vanilla map {rel}!"
+                lines.insert(1, inc_line)
+                out_bytes = ("\r\n".join(lines)).encode("utf-8")
+                dt = orig_item.date_time if orig_item.date_time[0] >= 1980 else (2020, 1, 1, 0, 0, 0)
+                zi = zipfile.ZipInfo(rel, date_time=dt)
+                zi.compress_type = zipfile.ZIP_DEFLATED
+                zout.writestr(zi, out_bytes)
+        os.replace(tmp_pak, out_pak)
+        assert dcg_count + non_dcg_count == expected_total, f"Expected {expected_total} maps in {out_pak}, got {dcg_count + non_dcg_count}"
+        assert dcg_count == expected_dcg, f"Expected {expected_dcg} DCG maps in {out_pak}, got {dcg_count}"
+        print(f"Rebuilt {os.path.basename(out_pak)}: {expected_total} maps ({dcg_count} DCG -> cheats_dcg.mi, {non_dcg_count} non-DCG -> cheats.mi).")
+
+    map_dir = os.path.join(MOD, "resource", "map")
+    patch_and_write(os.path.join(map_dir, "single.pak"), single_maps, 91, 0)
+    patch_and_write(os.path.join(map_dir, "multi.pak"), multi_maps, 388, 114)
 
 
 if __name__ == "__main__":
@@ -2244,5 +2407,7 @@ if __name__ == "__main__":
     write_conquest_budget_files()
     rewrite_supply_and_entities()
     generate_custom_button_icons()
+    rewrite_modtanks_entity_mi()
     rewrite_cheatsmod_pak()
+    rebuild_map_paks()
     print("ALL REWORK STEPS COMPLETED!")
