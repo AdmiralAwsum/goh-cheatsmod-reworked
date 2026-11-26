@@ -1564,7 +1564,25 @@ def generate_custom_button_icons():
         }
 
         for item in zin.infolist():
-            if item.filename.lower() in generated_names:
+            nl = item.filename.lower()
+            if nl in generated_names:
+                continue
+            if nl == "interface/layout/views/scene/scenegameview.xml":
+                xml_txt = zin.read(item.filename).decode("utf-8", errors="replace").replace("\r\n", "\n")
+                m_layer = re.search(
+                    r'\t{5}<FlowPanel id="cheat_reinforcement_layer"[^\n]*\n.*?\t{5}</FlowPanel>\n',
+                    xml_txt,
+                    re.S,
+                )
+                assert m_layer, "Missing cheat_reinforcement_layer in SceneGameView.xml"
+                layer_blk = m_layer.group(0)
+                xml_txt = xml_txt[: m_layer.start()] + xml_txt[m_layer.end() :]
+                anchor_ev = '\t\t\t\t\t<StackPanel id="event_log_layer">'
+                assert anchor_ev in xml_txt, "Missing event_log_layer anchor in SceneGameView.xml"
+                xml_txt = xml_txt.replace(anchor_ev, layer_blk + anchor_ev, 1)
+                assert xml_txt.count('id="cheat_reinforcement_layer"') == 1
+                assert xml_txt.find('id="unitspawn_layer"') < xml_txt.find('id="cheat_reinforcement_layer"') < xml_txt.find('id="event_log_layer"')
+                zout.writestr(item.filename, xml_txt.replace("\n", "\r\n").encode("utf-8"))
                 continue
             zout.writestr(item, zin.read(item.filename))
 
@@ -1741,6 +1759,16 @@ def patch_mi_content(raw_txt, label, is_dcg=False):
             rep = f'{m.group(1)}{txt_line}{img_line}\t\t\t\t{{hint {new_hint}}}\n'
             txt = txt[:m.start()] + rep + txt[m.end():]
 
+    # 4c. Pin cheat_return ("Back") to index 1 (very top of every submenu, right after "cheats" / before "changecountry_ger")
+    m_ret = re.search(r'\t\t\t\{"cheat_return"\n.*?\n\t\t\t\}\n', txt, re.S)
+    assert m_ret, f"Missing cheat_return button in {label}"
+    ret_blk = m_ret.group(0)
+    txt = txt[: m_ret.start()] + txt[m_ret.end() :]
+    anchor_ger = '\t\t\t{"changecountry_ger"\n'
+    assert anchor_ger in txt, f"Missing changecountry_ger anchor in {label}"
+    txt = txt.replace(anchor_ger, ret_blk + anchor_ger, 1)
+    assert txt.count('{"cheat_return"') == 1 and txt.find('{"cheat_return"') < txt.find('{"changecountry_ger"')
+
     # 5. Show & hide cheat_miner in Support menu (20:supportcheats)
     if "{name cheat_miner}" not in txt:
         txt = txt.replace(
@@ -1813,7 +1841,7 @@ def patch_mi_content(raw_txt, label, is_dcg=False):
     txt = txt.replace(vars_anchor, vars_anchor + vars_init_blk, 1)
 
     # 8. Replace broken triggers idempotently + add auto_detect_player + conquest_win + fast_miner + money
-    for dup_hdr in ('{"cheats/auto_detect_player"', '{"cheats/active/repair"', '{"cheats/active/conquest_win"', '{"cheats/units/fast_miner"'):
+    for dup_hdr in ('{"cheats/auto_detect_player"', '{"cheats/active/repair"', '{"cheats/active/conquest_win"', '{"cheats/units/fast_miner"', '{"cheat_menu/modtanks//btr"'):
         txt, _ = replace_trigger_block(txt, dup_hdr, "")
     txt, ok1 = replace_trigger_block(
         txt,
