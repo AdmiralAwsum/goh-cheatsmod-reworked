@@ -1191,7 +1191,7 @@ def make_miner_trigger():
 \t\t\t\t\t\t\t{{ignore_captured_by_user 0}}
 \t\t\t\t\t\t\t{{tag "cheat_infantry-ger1"}}
 \t\t\t\t\t\t}}
-\t\t\t\t\t\t{{waypoint "30001"}}
+\t\t\t\t\t\t{{waypoint "7901"}}
 \t\t\t\t\t\t{{clone}}
 \t\t\t\t\t\t{{approach teleport}}
 \t\t\t\t\t}}
@@ -1583,6 +1583,17 @@ def generate_custom_button_icons():
 def patch_mi_content(raw_txt, label, is_dcg=False):
     txt = raw_txt.replace("\r\n", "\n")
 
+    # 0. Remap out-of-bounds 30000..30007 waypoints to safe 7900..7907 inside GEM2's 8192-bit waypoint bitmap
+    for old_wp, new_wp in (
+        ("30000", "7900"),
+        ("30001", "7901"),
+        ("30002", "7902"),
+        ("30005", "7905"),
+        ("30006", "7906"),
+        ("30007", "7907"),
+    ):
+        txt = txt.replace(f'"{old_wp}"', f'"{new_wp}"')
+
     # 1. Strip all Chinese text from button labels
     cn_replacements = [
         ('{text "Cheat Ammo Box   无限弹药箱"}', '{text "Cheat Ammo Box"}'),
@@ -1640,7 +1651,7 @@ def patch_mi_content(raw_txt, label, is_dcg=False):
 \t\t\t\t{delay 0}
 \t\t\t\t{eventStart "cheat_click"}
 \t\t\t\t{eventEnd "cheats/fast_miner"}
-\t\t\t\t{waypoint "30001"}
+\t\t\t\t{waypoint "7901"}
 \t\t\t}"""
         txt = txt.replace(
             '\t\t\t{"cheat_mine"\n',
@@ -1886,11 +1897,11 @@ def patch_mi_content(raw_txt, label, is_dcg=False):
         txt = txt[:fn_start] + fn_blk_fixed + txt[fn_end:]
 
     # 9. Upgrade cheats/units/mine and cheats/units/mine_ap to spawn 8 armed mines per click
-    # Fix waypoint buttons to use eventEnd (fires AFTER placing waypoint 30001 on the ground!)
+    # Fix waypoint buttons to use eventEnd (fires AFTER placing waypoint 7901 on the ground!)
     for ev_name in ("cheats/mine", "cheats/mine_ap", "cheats/ammo", "cheats/artillery", "cheats/mortar"):
         txt = txt.replace(
-            f'\t\t\t\t{{eventStart "{ev_name}"}}\n\t\t\t\t{{waypoint "30001"}}',
-            f'\t\t\t\t{{eventStart "cheat_click"}}\n\t\t\t\t{{eventEnd "{ev_name}"}}\n\t\t\t\t{{waypoint "30001"}}',
+            f'\t\t\t\t{{eventStart "{ev_name}"}}\n\t\t\t\t{{waypoint "7901"}}',
+            f'\t\t\t\t{{eventStart "cheat_click"}}\n\t\t\t\t{{eventEnd "{ev_name}"}}\n\t\t\t\t{{waypoint "7901"}}',
         )
     txt = txt.replace(
         '\t\t\t\t{eventStart "cheats/destroyarmor"}\n',
@@ -1940,7 +1951,7 @@ def patch_mi_content(raw_txt, label, is_dcg=False):
     #     excluding {tag mine_planted} / {tag cheat_mine_armed} / {tag hidden}, arm them for cheat_options-player$,
     #     and tag them cheat_mine_armed so they show green friendly icons and are never re-armed on later clicks.
     mine_spawns_at = "\n".join(
-        '\t\t\t\t\t{"spawn"\n\t\t\t\t\t\t{entity "mine_antitank_cheat"}\n\t\t\t\t\t\t{waypoint "30001"}\n\t\t\t\t\t}'
+        '\t\t\t\t\t{"spawn"\n\t\t\t\t\t\t{entity "mine_antitank_cheat"}\n\t\t\t\t\t\t{waypoint "7901"}\n\t\t\t\t\t}'
         for _ in range(8)
     )
     new_units_mine = f"""\t\t\t{{"cheats/units/mine"
@@ -1967,7 +1978,7 @@ def patch_mi_content(raw_txt, label, is_dcg=False):
 \t\t\t\t}}
 \t\t\t}}"""
     mine_spawns_ap = "\n".join(
-        '\t\t\t\t\t{"spawn"\n\t\t\t\t\t\t{entity "mine_s_cheat"}\n\t\t\t\t\t\t{waypoint "30001"}\n\t\t\t\t\t}'
+        '\t\t\t\t\t{"spawn"\n\t\t\t\t\t\t{entity "mine_s_cheat"}\n\t\t\t\t\t\t{waypoint "7901"}\n\t\t\t\t\t}'
         for _ in range(8)
     )
     new_units_mine_ap = f"""\t\t\t{{"cheats/units/mine_ap"
@@ -2116,7 +2127,7 @@ def patch_mi_content(raw_txt, label, is_dcg=False):
 \t\t\t\t\t\t\t}}
 \t\t\t\t\t\t\t{{"spawn"
 \t\t\t\t\t\t\t\t{{entity "ammo_cheatsmod_global"}}
-\t\t\t\t\t\t\t\t{{waypoint "30001"}}
+\t\t\t\t\t\t\t\t{{waypoint "7901"}}
 \t\t\t\t\t\t\t}}
 \t\t\t\t\t\t\t{{"delay"
 \t\t\t\t\t\t\t\t{{time 0.1}}
@@ -2223,7 +2234,23 @@ def patch_mi_content(raw_txt, label, is_dcg=False):
     )
     assert undeclared <= allowed_dcg, f"Unexpected undeclared vars in {label} (is_dcg={is_dcg}): {sorted(undeclared - allowed_dcg)}"
 
-    print(f"Patched {label}: addexp={ok1}, destroyarmor={ok2}, aimrange={ok3}, braces OK ({opens}), vars OK (undeclared={sorted(undeclared)}), zero Chinese.")
+    # Verify all waypoints sit strictly inside GEM2's 8192-entry waypoint bitmap (0..8191)
+    assert not re.search(r'"3000\d"', txt), f"Out-of-bounds 3000x waypoint still present in {label}"
+    wp_pos = txt.find("{waypoints")
+    assert wp_pos != -1, f"Missing {{waypoints block in {label}"
+    wp_depth, wp_end = 0, wp_pos
+    for k in range(wp_pos, len(txt)):
+        if txt[k] == "{":
+            wp_depth += 1
+        elif txt[k] == "}":
+            wp_depth -= 1
+            if wp_depth == 0:
+                wp_end = k + 1
+                break
+    declared_wps = [int(w) for w in re.findall(r'\{"(\d+)"', txt[wp_pos:wp_end])]
+    assert declared_wps and all(0 <= w < 8192 for w in declared_wps), f"Out-of-bounds waypoint in {label}: {declared_wps}"
+
+    print(f"Patched {label}: addexp={ok1}, destroyarmor={ok2}, aimrange={ok3}, braces OK ({opens}), vars OK (undeclared={sorted(undeclared)}), wps={declared_wps}, zero Chinese.")
     return txt.replace("\n", "\r\n")
 
 
@@ -2328,7 +2355,8 @@ def rewrite_cheatsmod_pak():
 
 
 def rewrite_modtanks_entity_mi():
-    ent_mi_path = os.path.join(MOD, "resource", "modtanks_configuration", "entity.mi")
+    mt_dir = os.path.join(MOD, "resource", "modtanks_configuration")
+    ent_mi_path = os.path.join(mt_dir, "entity.mi")
     content = (
         '\t{Entity "sdkfz7" 0xfe01        {Position 10 1}        {Player 0}        {MID 9801}    }    {Tags "csp_1" "cheat_delete" "hidden" "cheat_infantry_spawn" 0xfe01}\r\n'
         '\t{Entity "pz35t" 0xfe02        {Position 20 1}        {Player 0}        {MID 9802}    }    {Tags "csp_2" "cheat_delete" "hidden" "cheat_infantry_spawn" 0xfe02}\r\n'
@@ -2337,10 +2365,18 @@ def rewrite_modtanks_entity_mi():
         '\t{Human "mp/ger/mid/flamer" 0xfe05        {Position 10 100}        {Player 0}        {MID 9805}    }    {Tags "hsp_1" "cheat_delete" "hidden" "cheat_infantry_spawn" 0xfe05}\r\n'
         '\t{Human "mp/rus/mid/rifle" 0xfe06        {Position 20 100}        {Player 0}        {MID 9806}    }    {Tags "hsp_2" "cheat_delete" "hidden" "cheat_infantry_spawn" 0xfe06}\r\n'
     )
-    os.makedirs(os.path.dirname(ent_mi_path), exist_ok=True)
+    os.makedirs(mt_dir, exist_ok=True)
     with open(ent_mi_path, "w", encoding="utf-8", newline="") as f:
         f.write(content)
-    print("Rewrote modtanks_configuration/entity.mi with unique non-colliding IDs (0xfe01..0xfe06).")
+    for mi_name in ("rfm.mi", "spawn.mi"):
+        p = os.path.join(mt_dir, mi_name)
+        with open(p, "r", encoding="utf-8", errors="replace") as f:
+            txt = f.read()
+        txt = txt.replace('"30000"', '"7900"').replace('"30001"', '"7901"')
+        assert not re.search(r"3000\d", txt), f"Out-of-bounds 3000x waypoint still present in {mi_name}"
+        with open(p, "w", encoding="utf-8", newline="") as f:
+            f.write(txt.replace("\r\n", "\n").replace("\n", "\r\n"))
+    print("Rewrote modtanks_configuration/{entity,rfm,spawn}.mi with unique IDs (0xfe01..0xfe06) & safe waypoints (7900..7901).")
 
 
 def rebuild_map_paks():
