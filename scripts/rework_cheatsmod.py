@@ -5,6 +5,7 @@ import os
 import re
 import zipfile
 from PIL import Image, ImageDraw, ImageEnhance, ImageFilter
+import roster_data
 
 MOD = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "mod")
 GOH_DIR = os.environ.get("GOH_DIR", r"D:\SteamLibrary\steamapps\common\Call to Arms - Gates of Hell")
@@ -60,6 +61,7 @@ def rewrite_localization():
     }
 
     out = []
+    seen_keys = set()
     for line in old_lines:
         if line.startswith('"Language:'):
             out.append('"Language: en\\n"')
@@ -70,6 +72,9 @@ def rewrite_localization():
         m = re.match(r'^(\t\{"([^"]+)"\s+)"(.*)"(\})\s*$', line)
         if m:
             prefix, key, val, suffix = m.groups()
+            if key in seen_keys:
+                continue
+            seen_keys.add(key)
             if key in en_overrides:
                 new_val = en_overrides[key]
             else:
@@ -92,13 +97,13 @@ def rewrite_localization():
         '\t{"c_setplayer_6" "Active Player set to: <e(shadow)><c(00d319)>6</c></e>"}',
         '\t{"c_setplayer_7" "Active Player set to: <e(shadow)><c(f2c200)>7</c></e>"}',
     ]
-    existing = "\n".join(out)
     for idx in range(len(out) - 1, -1, -1):
         if out[idx].strip() == "}":
             pos = idx
             for tag_line in extra_tags:
                 key = tag_line.split('"')[1]
-                if f'"{key}"' not in existing:
+                if key not in seen_keys:
+                    seen_keys.add(key)
                     out.insert(pos, tag_line)
                     pos += 1
             break
@@ -1561,6 +1566,9 @@ def generate_custom_button_icons():
             f"interface/scene/unit_icon/whitesnoop/cheats/{name}_{st}.tga".lower()
             for name in icon_specs
             for st in ("00", "01", "02")
+        } | {
+            "interface/scene/unit_icon/whitesnoop/flags/eng_00.tga",
+            "interface/scene/unit_icon/whitesnoop/flags/eng_01.tga",
         }
 
         for item in zin.infolist():
@@ -1594,8 +1602,569 @@ def generate_custom_button_icons():
                 out_name = f"interface/scene/unit_icon/whitesnoop/cheats/{icon_name}_{state}.tga"
                 zout.writestr(out_name, buf.getvalue())
 
+        # Generate 144x72 UK Union Jack flag button icons (eng_00.tga, eng_01.tga) from vanilla pages.pak
+        with zipfile.ZipFile(os.path.join(goh_res_if, "pages.pak"), "r") as zpages:
+            raw_uk_flag = load_img(zpages, "pages/main/dynamic_campaign/flag_eng.tga")
+        uk_resized = raw_uk_flag.resize((136, 64), Image.Resampling.LANCZOS)
+        uk_base = Image.new("RGBA", (144, 72), (6, 6, 6, 255))
+        uk_base.paste(uk_resized, (4, 4), uk_resized)
+        uk_hover = Image.new("RGBA", (144, 72), (6, 6, 6, 255))
+        uk_bright = ImageEnhance.Brightness(uk_resized).enhance(1.28)
+        uk_hover.paste(uk_bright, (4, 4), uk_bright)
+        for st, fim in (("00", uk_base), ("01", uk_hover)):
+            buf = io.BytesIO()
+            fim.save(buf, format="TGA")
+            zout.writestr(f"interface/scene/unit_icon/whitesnoop/flags/eng_{st}.tga", buf.getvalue())
+
     os.replace(tmp_pak, iface_pak)
-    print(f"Generated {len(icon_specs)} native-style 3-state TGA button icons in interface.pak.")
+    print(f"Generated {len(icon_specs)} native-style 3-state TGA icons + UK Union Jack flag in interface.pak.")
+
+
+def build_injected_human_blocks():
+    """Return (humans_block, tags_block) for the 71 added Single Infantry + UK Crew + UK Squad templates (0xf901..0xf947)."""
+    humans = []
+    tags = []
+    idx = 0
+
+    def add_human(hx, mid, breed, tag_list):
+        nonlocal idx
+        px = 10 + (idx % 12) * 10
+        py = 110 + (idx // 12) * 10
+        idx += 1
+        humans.append(
+            f'\t{{Human "{breed}" {hx}\n'
+            f'\t\t{{Position {px} {py}}}\n'
+            f'\t\t{{Volume "ram"\n'
+            f'\t\t\t{{able {{visible 0}}{{bullet 0}}{{throwing 0}}{{obstacle 0}}{{contact 0}}{{contact_ground 0}}{{blast 0}}{{select 0}}{{touch 0}}{{blockcamera 0}}}}\n'
+            f'\t\t\t{{disabled}}\n'
+            f'\t\t}}\n'
+            f'\t\t{{Player 0}}\n'
+            f'\t\t{{MID {mid}}}\n'
+            f'\t\t{{FsmState "stand_noaim"}}\n'
+            f'\t}}'
+        )
+        t_str = " ".join(f'"{tg}"' for tg in tag_list)
+        tags.append(f'\t{{Tags {t_str} {hx}}}')
+
+    hx_num = 0xF901
+    mid_num = 9101
+    for _cid, tfac, _bfac, entries in roster_data.SINGLE_UNIT_ROSTER:
+        for slot, _lbl, br, _ic, _h in entries:
+            add_human(f"0x{hx_num:04x}", mid_num, br, ["cheat_delete", "hidden", "cheat_infantry_spawn", f"cheat_single-{tfac}{slot}"])
+            hx_num += 1
+            mid_num += 1
+
+    for hx, mid, br, ctag in roster_data.UK_CREW_TEMPLATES:
+        add_human(hx, mid, br, [ctag, "cheat_delete", "hidden"])
+
+    for hx, mid, br, rtag in roster_data.UK_SQUAD_TEMPLATES:
+        add_human(hx, mid, br, ["hidden", "cheat_delete", "cheat_infantry_spawn", "cheat_infantry_brit", rtag])
+
+    return "\n".join(humans) + "\n", "\n".join(tags) + "\n"
+
+
+def build_single_unit_buttons():
+    """Return 50 faction-specific Single Infantry reinforcement buttons (10 roles x 5 playable factions)."""
+    out = []
+    for _cid, _tfac, bfac, entries in roster_data.SINGLE_UNIT_ROSTER:
+        for slot, lbl, _br, ic, h in entries:
+            out.append(
+                f'\t\t\t{{"cheat_infantrysingle_{bfac}_{slot:02d}"\n'
+                f'\t\t\t\t{{state hidden}}\n'
+                f'\t\t\t\t{{text "{lbl}"}}\n'
+                f'\t\t\t\t{{image "{ic}"}}\n'
+                f'\t\t\t\t{{hint "{h}"}}\n'
+                f'\t\t\t\t{{count -1}}\n'
+                f'\t\t\t\t{{score 0}}\n'
+                f'\t\t\t\t{{delay 0}}\n'
+                f'\t\t\t\t{{eventStart "cheat_click"}}\n'
+                f'\t\t\t\t{{eventEnd "cheatmod/spawn/infa/{slot}"}}\n'
+                f'\t\t\t\t{{waypoint "7901"}}\n'
+                f'\t\t\t}}'
+            )
+    return "\n".join(out) + "\n"
+
+
+def build_uk_unit_buttons():
+    """Return all 67 UK / Commonwealth vehicle & artillery reinforcement buttons."""
+    out = []
+    for _mval, pref, kind, _ctag, entries in roster_data.UK_VEHICLE_CATEGORIES:
+        for idx, ent, lbl, _cc in entries:
+            bname = f"cheat_brit_art_{idx:02d}" if kind == "art" else f"cheat_brit_tank_{pref}_{idx:02d}"
+            out.append(
+                f'\t\t\t{{"{bname}"\n'
+                f'\t\t\t\t{{state hidden}}\n'
+                f'\t\t\t\t{{text "{lbl}"}}\n'
+                f'\t\t\t\t{{image "{ent}"}}\n'
+                f'\t\t\t\t{{hint ""}}\n'
+                f'\t\t\t\t{{count -1}}\n'
+                f'\t\t\t\t{{score 0}}\n'
+                f'\t\t\t\t{{delay 0}}\n'
+                f'\t\t\t\t{{eventStart "cheat_click"}}\n'
+                f'\t\t\t\t{{eventEnd "cheatmod/spawn/{kind}/{idx}"}}\n'
+                f'\t\t\t\t{{waypoint "7901"}}\n'
+                f'\t\t\t}}'
+            )
+    return "\n".join(out) + "\n"
+
+
+def make_country_set_trigger():
+    return """\t\t\t{"cheats/country_set"
+\t\t\t\t{condition
+\t\t\t\t\t{terms
+\t\t\t\t\t\t{"1.event"
+\t\t\t\t\t\t\t{id "cheat_country_set"}
+\t\t\t\t\t\t}
+\t\t\t\t\t}
+\t\t\t\t}
+\t\t\t\t{actions
+\t\t\t\t\t{"set_i"
+\t\t\t\t\t\t{var "cheatcountry$"}
+\t\t\t\t\t\t{op "+"}
+\t\t\t\t\t\t{value 1}
+\t\t\t\t\t}
+\t\t\t\t\t{"if"
+\t\t\t\t\t\t{condition
+\t\t\t\t\t\t\t{type cmp_i}
+\t\t\t\t\t\t\t{var "cheatcountry$"}
+\t\t\t\t\t\t\t{op ">"}
+\t\t\t\t\t\t\t{value 6}
+\t\t\t\t\t\t}
+\t\t\t\t\t\t{"set_i"
+\t\t\t\t\t\t\t{var "cheatcountry$"}
+\t\t\t\t\t\t\t{op "="}
+\t\t\t\t\t\t\t{value 1}
+\t\t\t\t\t\t}
+\t\t\t\t\t}
+\t\t\t\t\t{"delay"
+\t\t\t\t\t\t{time 0.3}
+\t\t\t\t\t}
+\t\t\t\t\t{"event"
+\t\t\t\t\t\t{event "cheat_country_infantry"}
+\t\t\t\t\t\t{mode set}
+\t\t\t\t\t\t{delay 0}
+\t\t\t\t\t}
+\t\t\t\t\t{"event"
+\t\t\t\t\t\t{event "cheat_country_set"}
+\t\t\t\t\t\t{mode reset}
+\t\t\t\t\t\t{delay 0}
+\t\t\t\t\t}
+\t\t\t\t\t{"trigger"
+\t\t\t\t\t\t{name "cheats/country_set"}
+\t\t\t\t\t}
+\t\t\t\t}
+\t\t\t}"""
+
+
+def make_flag_county_trigger():
+    flags = [
+        (1, "changecountry_ger"),
+        (2, "changecountry_usa"),
+        (3, "changecountry_uk"),
+        (4, "changecountry_rus"),
+        (5, "changecountry_jap"),
+        (6, "changecountry_brit"),
+    ]
+    blocks = []
+    for cid, btn in flags:
+        blocks.append(
+            f'\t\t\t\t\t{{"if"\n'
+            f'\t\t\t\t\t\t{{condition\n'
+            f'\t\t\t\t\t\t\t{{type cmp_i}}\n'
+            f'\t\t\t\t\t\t\t{{var "cheatcountry$"}}\n'
+            f'\t\t\t\t\t\t\t{{op "=="}}\n'
+            f'\t\t\t\t\t\t\t{{value {cid}}}\n'
+            f'\t\t\t\t\t\t}}\n'
+            f'\t\t\t\t\t\t{{"reinforcement"\n'
+            f'\t\t\t\t\t\t\t{{operation show}}\n'
+            f'\t\t\t\t\t\t\t{{name {btn}}}\n'
+            f'\t\t\t\t\t\t}}\n'
+            f'\t\t\t\t\t}}'
+        )
+    return (
+        '\t\t\t{"cheat_menu/show/2:flag_county"\n'
+        '\t\t\t\t{condition\n'
+        '\t\t\t\t\t{type 1}\n'
+        '\t\t\t\t\t{terms\n'
+        '\t\t\t\t\t\t{"1.cmp_i"\n'
+        '\t\t\t\t\t\t\t{var "cheatflags$"}\n'
+        '\t\t\t\t\t\t\t{op "=="}\n'
+        '\t\t\t\t\t\t\t{value 1}\n'
+        '\t\t\t\t\t\t}\n'
+        '\t\t\t\t\t}\n'
+        '\t\t\t\t}\n'
+        '\t\t\t\t{actions\n'
+        '\t\t\t\t\t{"reinforcement"\n'
+        '\t\t\t\t\t\t{operation hide}\n'
+        '\t\t\t\t\t\t{name "changecountry_*"}\n'
+        '\t\t\t\t\t}\n'
+        + "\n".join(blocks)
+        + '\n\t\t\t\t\t{"trigger"\n'
+        '\t\t\t\t\t\t{name "cheat_menu/show/2:flag_county"}\n'
+        '\t\t\t\t\t}\n'
+        '\t\t\t\t}\n'
+        '\t\t\t}'
+    )
+
+
+def make_country_start_trigger():
+    mapping = [
+        (1, "cheat_infantry_ger"),
+        (2, "cheat_infantry_usa"),
+        (3, "cheat_infantry_eng"),
+        (4, "cheat_infantry_rus"),
+        (6, "cheat_infantry_brit"),
+    ]
+    blocks = []
+    for cid, tg in mapping:
+        blocks.append(
+            f'\t\t\t\t\t{{"if"\n'
+            f'\t\t\t\t\t\t{{condition\n'
+            f'\t\t\t\t\t\t\t{{type cmp_i}}\n'
+            f'\t\t\t\t\t\t\t{{var "cheatcountry$"}}\n'
+            f'\t\t\t\t\t\t\t{{op "=="}}\n'
+            f'\t\t\t\t\t\t\t{{value {cid}}}\n'
+            f'\t\t\t\t\t\t}}\n'
+            f'\t\t\t\t\t\t{{"entity_state"\n'
+            f'\t\t\t\t\t\t\t{{selector\n'
+            f'\t\t\t\t\t\t\t\t{{source advanced}}\n'
+            f'\t\t\t\t\t\t\t\t{{ignore_captured_by_user 0}}\n'
+            f'\t\t\t\t\t\t\t\t{{group\n'
+            f'\t\t\t\t\t\t\t\t\t{{select\n'
+            f'\t\t\t\t\t\t\t\t\t\t{{tag\n'
+            f'\t\t\t\t\t\t\t\t\t\t\t{{tag {tg}}}\n'
+            f'\t\t\t\t\t\t\t\t\t\t}}\n'
+            f'\t\t\t\t\t\t\t\t\t}}\n'
+            f'\t\t\t\t\t\t\t\t\t{{include\n'
+            f'\t\t\t\t\t\t\t\t\t\t{{tag\n'
+            f'\t\t\t\t\t\t\t\t\t\t\t{{tag hidden}}\n'
+            f'\t\t\t\t\t\t\t\t\t\t}}\n'
+            f'\t\t\t\t\t\t\t\t\t}}\n'
+            f'\t\t\t\t\t\t\t\t}}\n'
+            f'\t\t\t\t\t\t\t}}\n'
+            f'\t\t\t\t\t\t\t{{tag_add cheat_current_infantry}}\n'
+            f'\t\t\t\t\t\t}}\n'
+            f'\t\t\t\t\t}}'
+        )
+    return (
+        '\t\t\t{"cheats/country_start"\n'
+        '\t\t\t\t{condition\n'
+        '\t\t\t\t\t{terms\n'
+        '\t\t\t\t\t\t{"1.event"\n'
+        '\t\t\t\t\t\t\t{id "cheat_country_infantry"}\n'
+        '\t\t\t\t\t\t}\n'
+        '\t\t\t\t\t}\n'
+        '\t\t\t\t}\n'
+        '\t\t\t\t{actions\n'
+        '\t\t\t\t\t{"entity_state"\n'
+        '\t\t\t\t\t\t{selector\n'
+        '\t\t\t\t\t\t\t{source advanced}\n'
+        '\t\t\t\t\t\t\t{group\n'
+        '\t\t\t\t\t\t\t\t{select\n'
+        '\t\t\t\t\t\t\t\t\t{tag\n'
+        '\t\t\t\t\t\t\t\t\t\t{tag cheat_current_infantry}\n'
+        '\t\t\t\t\t\t\t\t\t}\n'
+        '\t\t\t\t\t\t\t\t}\n'
+        '\t\t\t\t\t\t\t\t{include\n'
+        '\t\t\t\t\t\t\t\t\t{tag\n'
+        '\t\t\t\t\t\t\t\t\t\t{tag hidden}\n'
+        '\t\t\t\t\t\t\t\t\t}\n'
+        '\t\t\t\t\t\t\t\t}\n'
+        '\t\t\t\t\t\t\t}\n'
+        '\t\t\t\t\t\t}\n'
+        '\t\t\t\t\t\t{tag_remove cheat_current_infantry}\n'
+        '\t\t\t\t\t}\n'
+        + "\n".join(blocks)
+        + '\n\t\t\t\t\t{"event"\n'
+        '\t\t\t\t\t\t{event "cheat_country_infantry"}\n'
+        '\t\t\t\t\t\t{mode reset}\n'
+        '\t\t\t\t\t\t{delay 0}\n'
+        '\t\t\t\t\t}\n'
+        '\t\t\t\t\t{"trigger"\n'
+        '\t\t\t\t\t\t{name "cheats/country_start"}\n'
+        '\t\t\t\t\t}\n'
+        '\t\t\t\t}\n'
+        '\t\t\t}'
+    )
+
+
+def make_single_infantry_show_hide_triggers():
+    trigs = []
+    for cid, _tfac, bfac, _es in roster_data.SINGLE_UNIT_ROSTER:
+        trigs.append(
+            f'\t\t\t{{"cheat_menu/show/infantry/4:single_{bfac}"\n'
+            f'\t\t\t\t{{condition\n'
+            f'\t\t\t\t\t{{terms\n'
+            f'\t\t\t\t\t\t{{"1.cmp_i"\n'
+            f'\t\t\t\t\t\t\t{{var "cheatcountry$"}}\n'
+            f'\t\t\t\t\t\t\t{{op "=="}}\n'
+            f'\t\t\t\t\t\t\t{{value {cid}}}\n'
+            f'\t\t\t\t\t\t}}\n'
+            f'\t\t\t\t\t\t{{"2.cmp_i"\n'
+            f'\t\t\t\t\t\t\t{{var "cheatmenu$"}}\n'
+            f'\t\t\t\t\t\t\t{{op "=="}}\n'
+            f'\t\t\t\t\t\t\t{{value 4}}\n'
+            f'\t\t\t\t\t\t}}\n'
+            f'\t\t\t\t\t}}\n'
+            f'\t\t\t\t}}\n'
+            f'\t\t\t\t{{actions\n'
+            f'\t\t\t\t\t{{"reinforcement"\n'
+            f'\t\t\t\t\t\t{{operation show}}\n'
+            f'\t\t\t\t\t\t{{name "cheat_infantrysingle_{bfac}_*"}}\n'
+            f'\t\t\t\t\t}}\n'
+            f'\t\t\t\t\t{{"trigger"\n'
+            f'\t\t\t\t\t\t{{name "cheat_menu/show/infantry/4:single_{bfac}"}}\n'
+            f'\t\t\t\t\t}}\n'
+            f'\t\t\t\t}}\n'
+            f'\t\t\t}}'
+        )
+        trigs.append(
+            f'\t\t\t{{"cheat_menu/hide/infantry/4:single_{bfac}"\n'
+            f'\t\t\t\t{{condition\n'
+            f'\t\t\t\t\t{{type 1}}\n'
+            f'\t\t\t\t\t{{terms\n'
+            f'\t\t\t\t\t\t{{"1.cmp_i"\n'
+            f'\t\t\t\t\t\t\t{{var "cheatcountry$"}}\n'
+            f'\t\t\t\t\t\t\t{{op "!="}}\n'
+            f'\t\t\t\t\t\t\t{{value {cid}}}\n'
+            f'\t\t\t\t\t\t}}\n'
+            f'\t\t\t\t\t\t{{"2.cmp_i"\n'
+            f'\t\t\t\t\t\t\t{{var "cheatmenu$"}}\n'
+            f'\t\t\t\t\t\t\t{{op "!="}}\n'
+            f'\t\t\t\t\t\t\t{{value 4}}\n'
+            f'\t\t\t\t\t\t}}\n'
+            f'\t\t\t\t\t}}\n'
+            f'\t\t\t\t}}\n'
+            f'\t\t\t\t{{actions\n'
+            f'\t\t\t\t\t{{"reinforcement"\n'
+            f'\t\t\t\t\t\t{{operation hide}}\n'
+            f'\t\t\t\t\t\t{{name "cheat_infantrysingle_{bfac}_*"}}\n'
+            f'\t\t\t\t\t}}\n'
+            f'\t\t\t\t\t{{"trigger"\n'
+            f'\t\t\t\t\t\t{{name "cheat_menu/hide/infantry/4:single_{bfac}"}}\n'
+            f'\t\t\t\t\t}}\n'
+            f'\t\t\t\t}}\n'
+            f'\t\t\t}}'
+        )
+    return "\n".join(trigs)
+
+
+def make_single_infantry_spawn_triggers():
+    trigs = []
+    for slot in range(1, 11):
+        blocks = []
+        for cid, tfac, _bfac, _es in roster_data.SINGLE_UNIT_ROSTER:
+            blocks.append(
+                f'\t\t\t\t\t{{"if"\n'
+                f'\t\t\t\t\t\t{{condition\n'
+                f'\t\t\t\t\t\t\t{{type cmp_i}}\n'
+                f'\t\t\t\t\t\t\t{{var "cheatcountry$"}}\n'
+                f'\t\t\t\t\t\t\t{{op "=="}}\n'
+                f'\t\t\t\t\t\t\t{{value {cid}}}\n'
+                f'\t\t\t\t\t\t}}\n'
+                f'\t\t\t\t\t\t{{"call"\n'
+                f'\t\t\t\t\t\t\t{{function "cheat_reinf_inf"}}\n'
+                f'\t\t\t\t\t\t\t{{context\n'
+                f'\t\t\t\t\t\t\t\t{{specified}}\n'
+                f'\t\t\t\t\t\t\t\t{{selector\n'
+                f'\t\t\t\t\t\t\t\t\t{{source advanced}}\n'
+                f'\t\t\t\t\t\t\t\t\t{{ignore_captured_by_user 0}}\n'
+                f'\t\t\t\t\t\t\t\t\t{{group\n'
+                f'\t\t\t\t\t\t\t\t\t\t{{select\n'
+                f'\t\t\t\t\t\t\t\t\t\t\t{{tag\n'
+                f'\t\t\t\t\t\t\t\t\t\t\t\t{{tag "cheat_single-{tfac}{slot}"}}\n'
+                f'\t\t\t\t\t\t\t\t\t\t\t}}\n'
+                f'\t\t\t\t\t\t\t\t\t\t}}\n'
+                f'\t\t\t\t\t\t\t\t\t\t{{include\n'
+                f'\t\t\t\t\t\t\t\t\t\t\t{{tag\n'
+                f'\t\t\t\t\t\t\t\t\t\t\t\t{{tag hidden}}\n'
+                f'\t\t\t\t\t\t\t\t\t\t\t}}\n'
+                f'\t\t\t\t\t\t\t\t\t\t}}\n'
+                f'\t\t\t\t\t\t\t\t\t}}\n'
+                f'\t\t\t\t\t\t\t\t}}\n'
+                f'\t\t\t\t\t\t\t}}\n'
+                f'\t\t\t\t\t\t}}\n'
+                f'\t\t\t\t\t}}'
+            )
+        trigs.append(
+            f'\t\t\t{{"cheats/infa/single/{slot}"\n'
+            f'\t\t\t\t{{condition\n'
+            f'\t\t\t\t\t{{terms\n'
+            f'\t\t\t\t\t\t{{"1.event"\n'
+            f'\t\t\t\t\t\t\t{{id "cheatmod/spawn/infa/{slot}"}}\n'
+            f'\t\t\t\t\t\t}}\n'
+            f'\t\t\t\t\t\t{{"2.cmp_i"\n'
+            f'\t\t\t\t\t\t\t{{var "cheatmenu$"}}\n'
+            f'\t\t\t\t\t\t\t{{op "=="}}\n'
+            f'\t\t\t\t\t\t\t{{value 4}}\n'
+            f'\t\t\t\t\t\t}}\n'
+            f'\t\t\t\t\t}}\n'
+            f'\t\t\t\t}}\n'
+            f'\t\t\t\t{{actions\n'
+            + "\n".join(blocks)
+            + f'\n\t\t\t\t\t{{"event"\n'
+            f'\t\t\t\t\t\t{{event "cheatmod/spawn/infa/{slot}"}}\n'
+            f'\t\t\t\t\t\t{{mode reset}}\n'
+            f'\t\t\t\t\t\t{{delay 0}}\n'
+            f'\t\t\t\t\t}}\n'
+            f'\t\t\t\t\t{{"trigger"\n'
+            f'\t\t\t\t\t\t{{name "cheats/infa/single/{slot}"}}\n'
+            f'\t\t\t\t\t}}\n'
+            f'\t\t\t\t}}\n'
+            f'\t\t\t}}'
+        )
+    return "\n".join(trigs)
+
+
+def make_uk_menu_and_spawn_triggers():
+    trigs = []
+    # Show/hide triggers for UK BTR/Light/Medium/Heavy + Artillery
+    for mval, pref, kind, _ctag, _es in roster_data.UK_VEHICLE_CATEGORIES:
+        if kind == "tank":
+            tname = f"cheat_menu/tanks/brit/{pref}"
+            wcard = f"cheat_brit_tank_{pref}*"
+        else:
+            tname = "cheat_menu/art/brit"
+            wcard = "cheat_brit_art*"
+        trigs.append(
+            f'\t\t\t{{"{tname}"\n'
+            f'\t\t\t\t{{condition\n'
+            f'\t\t\t\t\t{{expression "1 & 2"}}\n'
+            f'\t\t\t\t\t{{terms\n'
+            f'\t\t\t\t\t\t{{"1.cmp_i"\n'
+            f'\t\t\t\t\t\t\t{{var "cheatcountry$"}}\n'
+            f'\t\t\t\t\t\t\t{{op "=="}}\n'
+            f'\t\t\t\t\t\t\t{{value 6}}\n'
+            f'\t\t\t\t\t\t}}\n'
+            f'\t\t\t\t\t\t{{"2.cmp_i"\n'
+            f'\t\t\t\t\t\t\t{{var "cheatmenu$"}}\n'
+            f'\t\t\t\t\t\t\t{{op "=="}}\n'
+            f'\t\t\t\t\t\t\t{{value {mval}}}\n'
+            f'\t\t\t\t\t\t}}\n'
+            f'\t\t\t\t\t}}\n'
+            f'\t\t\t\t}}\n'
+            f'\t\t\t\t{{actions\n'
+            f'\t\t\t\t\t{{"reinforcement"\n'
+            f'\t\t\t\t\t\t{{operation show}}\n'
+            f'\t\t\t\t\t\t{{name "{wcard}"}}\n'
+            f'\t\t\t\t\t}}\n'
+            f'\t\t\t\t\t{{"trigger"\n'
+            f'\t\t\t\t\t\t{{name "{tname}"}}\n'
+            f'\t\t\t\t\t}}\n'
+            f'\t\t\t\t}}\n'
+            f'\t\t\t}}'
+        )
+    trigs.append(
+        '\t\t\t{"cheat_menu/tanks/hide/brit"\n'
+        '\t\t\t\t{condition\n'
+        '\t\t\t\t\t{expression "1 | 2"}\n'
+        '\t\t\t\t\t{terms\n'
+        '\t\t\t\t\t\t{"1.cmp_i"\n'
+        '\t\t\t\t\t\t\t{var "cheatcountry$"}\n'
+        '\t\t\t\t\t\t\t{op "!="}\n'
+        '\t\t\t\t\t\t\t{value 6}\n'
+        '\t\t\t\t\t\t}\n'
+        '\t\t\t\t\t\t{"2.cmp_i"\n'
+        '\t\t\t\t\t\t\t{var "cheatmenu$"}\n'
+        '\t\t\t\t\t\t\t{op "<<"}\n'
+        '\t\t\t\t\t\t\t{value 9}\n'
+        '\t\t\t\t\t\t}\n'
+        '\t\t\t\t\t}\n'
+        '\t\t\t\t}\n'
+        '\t\t\t\t{actions\n'
+        '\t\t\t\t\t{"reinforcement"\n'
+        '\t\t\t\t\t\t{operation hide}\n'
+        '\t\t\t\t\t\t{name "cheat_brit_tank*"}\n'
+        '\t\t\t\t\t}\n'
+        '\t\t\t\t\t{"trigger"\n'
+        '\t\t\t\t\t\t{name "cheat_menu/tanks/hide/brit"}\n'
+        '\t\t\t\t\t}\n'
+        '\t\t\t\t}\n'
+        '\t\t\t}'
+    )
+    trigs.append(
+        '\t\t\t{"cheat_menu/art/hide/brit"\n'
+        '\t\t\t\t{condition\n'
+        '\t\t\t\t\t{type 1}\n'
+        '\t\t\t\t\t{terms\n'
+        '\t\t\t\t\t\t{"1.cmp_i"\n'
+        '\t\t\t\t\t\t\t{var "cheatcountry$"}\n'
+        '\t\t\t\t\t\t\t{op "!="}\n'
+        '\t\t\t\t\t\t\t{value 6}\n'
+        '\t\t\t\t\t\t}\n'
+        '\t\t\t\t\t\t{"2.cmp_i"\n'
+        '\t\t\t\t\t\t\t{var "cheatmenu$"}\n'
+        '\t\t\t\t\t\t\t{op "!="}\n'
+        '\t\t\t\t\t\t\t{value 13}\n'
+        '\t\t\t\t\t\t}\n'
+        '\t\t\t\t\t}\n'
+        '\t\t\t\t}\n'
+        '\t\t\t\t{actions\n'
+        '\t\t\t\t\t{"reinforcement"\n'
+        '\t\t\t\t\t\t{operation hide}\n'
+        '\t\t\t\t\t\t{name "cheat_brit_art*"}\n'
+        '\t\t\t\t\t}\n'
+        '\t\t\t\t\t{"trigger"\n'
+        '\t\t\t\t\t\t{name "cheat_menu/art/hide/brit"}\n'
+        '\t\t\t\t\t}\n'
+        '\t\t\t\t}\n'
+        '\t\t\t}'
+    )
+
+    # 67 UK spawn triggers
+    for mval, pref, kind, ctag, entries in roster_data.UK_VEHICLE_CATEGORIES:
+        for idx, ent, _lbl, cc in entries:
+            tname = f"cheats/art/brit/{idx}" if kind == "art" else f"cheats/tanks/brit/{pref}/{idx}"
+            trigs.append(
+                f'\t\t\t{{"{tname}"\n'
+                f'\t\t\t\t{{condition\n'
+                f'\t\t\t\t\t{{terms\n'
+                f'\t\t\t\t\t\t{{"1.event"\n'
+                f'\t\t\t\t\t\t\t{{id "cheatmod/spawn/{kind}/{idx}"}}\n'
+                f'\t\t\t\t\t\t}}\n'
+                f'\t\t\t\t\t\t{{"2.cmp_i"\n'
+                f'\t\t\t\t\t\t\t{{var "cheatmenu$"}}\n'
+                f'\t\t\t\t\t\t\t{{op "=="}}\n'
+                f'\t\t\t\t\t\t\t{{value {mval}}}\n'
+                f'\t\t\t\t\t\t}}\n'
+                f'\t\t\t\t\t\t{{"3.cmp_i"\n'
+                f'\t\t\t\t\t\t\t{{var "cheatcountry$"}}\n'
+                f'\t\t\t\t\t\t\t{{op "=="}}\n'
+                f'\t\t\t\t\t\t\t{{value 6}}\n'
+                f'\t\t\t\t\t\t}}\n'
+                f'\t\t\t\t\t}}\n'
+                f'\t\t\t\t}}\n'
+                f'\t\t\t\t{{actions\n'
+                f'\t\t\t\t\t{{"loop" {cc}\n'
+                f'\t\t\t\t\t\t{{"actor_to_waypoint"\n'
+                f'\t\t\t\t\t\t\t{{selector\n'
+                f'\t\t\t\t\t\t\t\t{{ignore_captured_by_user 0}}\n'
+                f'\t\t\t\t\t\t\t\t{{tag {ctag}}}\n'
+                f'\t\t\t\t\t\t\t}}\n'
+                f'\t\t\t\t\t\t\t{{waypoint "7902"}}\n'
+                f'\t\t\t\t\t\t\t{{clone}}\n'
+                f'\t\t\t\t\t\t\t{{approach teleport}}\n'
+                f'\t\t\t\t\t\t}}\n'
+                f'\t\t\t\t\t}}\n'
+                f'\t\t\t\t\t{{"spawn"\n'
+                f'\t\t\t\t\t\t{{entity "{ent}"}}\n'
+                f'\t\t\t\t\t\t{{waypoint "7900"}}\n'
+                f'\t\t\t\t\t}}\n'
+                f'\t\t\t\t\t{{"call"\n'
+                f'\t\t\t\t\t\t{{function "tankgetsfilled"}}\n'
+                f'\t\t\t\t\t}}\n'
+                f'\t\t\t\t\t{{"event"\n'
+                f'\t\t\t\t\t\t{{event "cheatmod/spawn/{kind}/{idx}"}}\n'
+                f'\t\t\t\t\t\t{{mode reset}}\n'
+                f'\t\t\t\t\t\t{{delay 0}}\n'
+                f'\t\t\t\t\t}}\n'
+                f'\t\t\t\t\t{{"trigger"\n'
+                f'\t\t\t\t\t\t{{name "{tname}"}}\n'
+                f'\t\t\t\t\t}}\n'
+                f'\t\t\t\t}}\n'
+                f'\t\t\t}}'
+            )
+    return "\n".join(trigs)
 
 
 def patch_mi_content(raw_txt, label, is_dcg=False):
@@ -1612,6 +2181,39 @@ def patch_mi_content(raw_txt, label, is_dcg=False):
     ):
         txt = txt.replace(f'"{old_wp}"', f'"{new_wp}"')
 
+    # 0b. Fix specific template tag bugs idempotently (German SMG stray Panzerschreck, USA AP/AT miner swap, Air 1/2 delete)
+    txt = txt.replace(
+        '\t{Tags "cheat_deletet" "hidden" "cheat_infantry_spawn" "cheat_infantry-ger2" 0x8801}',
+        '\t{Tags "cheat_delete" "hidden" "cheat_infantry_spawn" 0x8801}',
+    )
+    txt = txt.replace(
+        '\t{Tags "hidden" "cheat_delete" "cheat_infantry_spawn" "cheat_infantry_usa" "c_ap_miner" 0xf006}',
+        '\t{Tags "hidden" "cheat_delete" "cheat_infantry_spawn" "cheat_infantry_usa" "c_at_miner" 0xf006}',
+    )
+    txt = txt.replace(
+        '\t{Tags "hidden" "cheat_delete" "cheat_infantry_spawn" "cheat_infantry_usa" "c_at_miner" 0xa00b}',
+        '\t{Tags "hidden" "cheat_delete" "cheat_infantry_spawn" "cheat_infantry_usa" "c_ap_miner" 0xa00b}',
+    )
+    txt = txt.replace(
+        '\t{Tags "engine_count_1" "cheat_air1" "cheat_airstate" "hidden" "cheat_air_pl" "cheat_infantry_spawn" "move_fast" 0xc00a}',
+        '\t{Tags "engine_count_1" "cheat_air1" "cheat_airstate" "hidden" "cheat_air_pl" "cheat_infantry_spawn" "cheat_delete" "move_fast" 0xc00a}',
+    )
+    txt = txt.replace(
+        '\t{Tags "engine_count_2" "hidden" "cheat_air2" "cheat_airstate" "cheat_air_pl" "cheat_infantry_spawn" "move_fast" 0xc00b}',
+        '\t{Tags "engine_count_2" "hidden" "cheat_air2" "cheat_airstate" "cheat_air_pl" "cheat_infantry_spawn" "cheat_delete" "move_fast" 0xc00b}',
+    )
+
+    # 0c. Inject 71 clean {Human} & {Tags} templates (0xf901..0xf947, MIDs 9101..9171) idempotently
+    txt = re.sub(r'\t\{Human "[^"]+" 0xf9[0-9a-f]{2}\n.*?\n\t\}\n', '', txt, flags=re.S)
+    txt = re.sub(r'\t\{Tags [^\n]* 0xf9[0-9a-f]{2}\}\n', '', txt)
+    inj_humans, inj_tags = build_injected_human_blocks()
+    link_anchor = '\t{Link '
+    assert link_anchor in txt, f"Missing {{Link anchor in {label}"
+    txt = txt.replace(link_anchor, inj_humans + link_anchor, 1)
+    rus8_tag_anchor = '\t{Tags "cheat_delete" "hidden" "cheat_infantry_spawn" "cheat_infantry-rus8" 0xd400}\n'
+    assert rus8_tag_anchor in txt, f"Missing 0xd400 tag anchor in {label}"
+    txt = txt.replace(rus8_tag_anchor, rus8_tag_anchor + inj_tags, 1)
+
     # 1. Strip all Chinese text from button labels
     cn_replacements = [
         ('{text "Cheat Ammo Box   无限弹药箱"}', '{text "Cheat Ammo Box"}'),
@@ -1625,11 +2227,46 @@ def patch_mi_content(raw_txt, label, is_dcg=False):
     for old, new in cn_replacements:
         txt = txt.replace(old, new)
 
-    # 2. Register new events & vars ("cheats/fast_miner", "cheats/conquest_win", "cheat_player_detected")
+    # 2. Register new events & vars ("cheats/fast_miner", "cheats/conquest_win", "cheatmod/spawn/infa/9..10", "cheat_player_detected")
     if '{"cheat_player_detected"}' not in txt:
         txt = txt.replace('{"cheat_options-player"}', '{"cheat_options-player"}\n\t\t\t{"cheat_player_detected"}', 1)
     if '{event "cheats/fast_miner"}' not in txt:
         txt = txt.replace('{event "cheat_delete"}', '{event "cheat_delete"}\n\t\t{event "cheats/fast_miner"}\n\t\t{event "cheats/conquest_win"}', 1)
+    if '{event "cheatmod/spawn/infa/9"}' not in txt:
+        txt = txt.replace(
+            '{event "cheatmod/spawn/infa/8"}',
+            '{event "cheatmod/spawn/infa/8"}\n\t\t{event "cheatmod/spawn/infa/9"}\n\t\t{event "cheatmod/spawn/infa/10"}',
+            1,
+        )
+
+    # 2b. Inject UK flag button, 50 faction Single-Unit buttons, and 67 UK vehicle/artillery buttons idempotently
+    txt = re.sub(r'\t\t\t\{"changecountry_brit"\n.*?\n\t\t\t\}\n', '', txt, flags=re.S)
+    jap_flag_m = re.search(r'(\t\t\t\{"changecountry_jap"\n.*?\n\t\t\t\}\n)', txt, re.S)
+    assert jap_flag_m, f"Missing changecountry_jap flag button in {label}"
+    brit_flag_btn = (
+        '\t\t\t{"changecountry_brit"\n'
+        '\t\t\t\t{state hidden}\n'
+        '\t\t\t\t{text ""}\n'
+        '\t\t\t\t{image "whitesnoop/flags/eng"}\n'
+        '\t\t\t\t{hint "Switch spawn roster to United Kingdom / Commonwealth"}\n'
+        '\t\t\t\t{count -1}\n'
+        '\t\t\t\t{score 0}\n'
+        '\t\t\t\t{delay 0}\n'
+        '\t\t\t\t{eventStart "cheat_click"}\n'
+        '\t\t\t\t{eventEnd "cheat_country_set"}\n'
+        '\t\t\t}\n'
+    )
+    txt = txt[: jap_flag_m.end()] + brit_flag_btn + txt[jap_flag_m.end() :]
+
+    txt = re.sub(r'\t\t\t\{"cheat_infantrysingle[^\"]*"\n.*?\n\t\t\t\}\n', '', txt, flags=re.S)
+    squad1_anchor = '\t\t\t{"cheat_infantrysquad1"\n'
+    assert squad1_anchor in txt, f"Missing cheat_infantrysquad1 anchor in {label}"
+    txt = txt.replace(squad1_anchor, build_single_unit_buttons() + squad1_anchor, 1)
+
+    txt = re.sub(r'\t\t\t\{"cheat_brit_(?:tank|art)_[^\"]*"\n.*?\n\t\t\t\}\n', '', txt, flags=re.S)
+    jap_art8_m = re.search(r'(\t\t\t\{"cheat_jap_art8"\n.*?\n\t\t\t\}\n)', txt, re.S)
+    assert jap_art8_m, f"Missing cheat_jap_art8 anchor in {label}"
+    txt = txt[: jap_art8_m.end()] + build_uk_unit_buttons() + txt[jap_art8_m.end() :]
 
     # 3. Fix cheat_destroyarmor {count 0} -> {count -1} and add clean text
     txt = re.sub(
@@ -1748,9 +2385,11 @@ def patch_mi_content(raw_txt, label, is_dcg=False):
             f'"Cheats & spawns target Player {p_num} (auto-detected; click to switch to Player {nxt_num})"',
         )
 
+    button_updates.update(roster_data.EXISTING_LABEL_UPDATES)
+
     for btn_id, (new_text, new_img, new_hint) in button_updates.items():
         bpat = re.compile(
-            r'(\t\t\t\{"' + re.escape(btn_id) + r'"\n\t\t\t\t\{state hidden\}\n)(\t\t\t\t\{text [^\n]+\}\n)(\t\t\t\t\{image [^\n]+\}\n)\t\t\t\t\{hint [^\n]+\}\n'
+            r'(\t\t\t\{"' + re.escape(btn_id) + r'"\n\t\t\t\t\{state hidden\}\n)(\t\t\t\t\{text [^\n]+\}\n)(\t\t\t\t\{image [^\n]+\}\n)\t\t\t\t\{hint [^\n]*\}\n'
         )
         m = bpat.search(txt)
         if m:
@@ -1840,9 +2479,32 @@ def patch_mi_content(raw_txt, label, is_dcg=False):
     assert vars_anchor in txt, f"cheats/set/vars anchor not found in {label}"
     txt = txt.replace(vars_anchor, vars_anchor + vars_init_blk, 1)
 
-    # 8. Replace broken triggers idempotently + add auto_detect_player + conquest_win + fast_miner + money
-    for dup_hdr in ('{"cheats/auto_detect_player"', '{"cheats/active/repair"', '{"cheats/active/conquest_win"', '{"cheats/units/fast_miner"', '{"cheat_menu/modtanks//btr"'):
+    # 8. Replace broken triggers idempotently + add auto_detect_player + conquest_win + fast_miner + money + expanded Single Units + UK faction
+    strip_hdrs = [
+        '{"cheats/auto_detect_player"',
+        '{"cheats/active/repair"',
+        '{"cheats/active/conquest_win"',
+        '{"cheats/units/fast_miner"',
+        '{"cheat_menu/modtanks//btr"',
+        '{"cheat_menu/show/infantry/4:single"',
+        '{"cheat_menu/tanks/hide/brit"',
+        '{"cheat_menu/art/brit"',
+        '{"cheat_menu/art/hide/brit"',
+    ]
+    for _cid, _tf, _bf, _es in roster_data.SINGLE_UNIT_ROSTER:
+        strip_hdrs.append(f'{{"cheat_menu/show/infantry/4:single_{_bf}"')
+        strip_hdrs.append(f'{{"cheat_menu/hide/infantry/4:single_{_bf}"')
+    for _s in range(1, 11):
+        strip_hdrs.append(f'{{"cheats/infa/single/{_s}"')
+    for _mval, _pref, _kind, _ctag, _es in roster_data.UK_VEHICLE_CATEGORIES:
+        if _kind == "tank":
+            strip_hdrs.append(f'{{"cheat_menu/tanks/brit/{_pref}"')
+        for _idx, _ent, _lbl, _cc in _es:
+            tname = f"cheats/art/brit/{_idx}" if _kind == "art" else f"cheats/tanks/brit/{_pref}/{_idx}"
+            strip_hdrs.append(f'{{"{tname}"')
+    for dup_hdr in strip_hdrs:
         txt, _ = replace_trigger_block(txt, dup_hdr, "")
+
     txt, ok1 = replace_trigger_block(
         txt,
         '{"cheats/active/addexp"',
@@ -1854,10 +2516,42 @@ def patch_mi_content(raw_txt, label, is_dcg=False):
         + "\n"
         + make_conquest_win_trigger(is_dcg=is_dcg)
         + "\n"
-        + make_miner_trigger(),
+        + make_miner_trigger()
+        + "\n"
+        + make_single_infantry_show_hide_triggers()
+        + "\n"
+        + make_single_infantry_spawn_triggers()
+        + "\n"
+        + make_uk_menu_and_spawn_triggers(),
     )
     txt, ok_mon = replace_trigger_block(txt, '{"cheats/money"', make_money_trigger())
     assert ok_mon, f"cheats/money replace failed in {label}"
+    txt, ok_cs = replace_trigger_block(txt, '{"cheats/country_set"', make_country_set_trigger())
+    assert ok_cs, f"cheats/country_set replace failed in {label}"
+    txt, ok_fc = replace_trigger_block(txt, '{"cheat_menu/show/2:flag_county"', make_flag_county_trigger())
+    assert ok_fc, f"cheat_menu/show/2:flag_county replace failed in {label}"
+    txt, ok_cst = replace_trigger_block(txt, '{"cheats/country_start"', make_country_start_trigger())
+    assert ok_cst, f"cheats/country_start replace failed in {label}"
+
+    # Fix specific entity-spawn bugs inside rus/light/1 (su76 -> t27) and american/medium/12 (m36_gmc_t33 -> m36b1_gmc_t33)
+    for tname, old_ent, new_ent in (
+        ("cheats/tanks/rus/light/1", '{entity "su76"}', '{entity "t27"}'),
+        ("cheats/tanks/american/medium/12", '{entity "m36_gmc_t33"}', '{entity "m36b1_gmc_t33"}'),
+    ):
+        t_pos = txt.find(f'\t\t\t{{"{tname}"')
+        assert t_pos != -1, f"Missing {tname} in {label}"
+        td, t_end = 0, t_pos
+        for tk in range(t_pos, len(txt)):
+            if txt[tk] == "{":
+                td += 1
+            elif txt[tk] == "}":
+                td -= 1
+                if td == 0:
+                    t_end = tk + 1
+                    break
+        t_blk = txt[t_pos:t_end].replace(old_ent, new_ent)
+        assert new_ent in t_blk, f"Failed to patch {old_ent} -> {new_ent} in {tname}"
+        txt = txt[:t_pos] + t_blk + txt[t_end:]
     txt, ok2 = replace_trigger_block(txt, '{## "cheats/destroyarmor"', make_destroyarmor_trigger())
     if not ok2:
         txt, ok2 = replace_trigger_block(txt, '{"cheats/destroyarmor"', make_destroyarmor_trigger())
@@ -2278,6 +2972,21 @@ def patch_mi_content(raw_txt, label, is_dcg=False):
     declared_wps = [int(w) for w in re.findall(r'\{"(\d+)"', txt[wp_pos:wp_end])]
     assert declared_wps and all(0 <= w < 8192 for w in declared_wps), f"Out-of-bounds waypoint in {label}: {declared_wps}"
 
+    # Verify expanded 50 Single Units + full UK faction additions & bugfixes
+    for cid, tfac, bfac, entries in roster_data.SINGLE_UNIT_ROSTER:
+        for slot, lbl, br, ic, h in entries:
+            assert f'"cheat_single-{tfac}{slot}"' in txt, f"Missing single unit tag cheat_single-{tfac}{slot} in {label}"
+            btn_name = f"cheat_infantrysingle_{bfac}_{slot:02d}"
+            assert f'{{"{btn_name}"' in txt, f"Missing single unit button {btn_name} in {label}"
+    assert '{"changecountry_brit"' in txt, f"Missing changecountry_brit button in {label}"
+    assert '"cheat_brit_crew"' in txt and '"cheat_brit_artm"' in txt and '"cheat_infantry_brit"' in txt
+    for mval, pref, kind, ctag, entries in roster_data.UK_VEHICLE_CATEGORIES:
+        for idx, ent, lbl, cc in entries:
+            bname = f"cheat_brit_art_{idx:02d}" if kind == "art" else f"cheat_brit_tank_{pref}_{idx:02d}"
+            assert f'{{"{bname}"' in txt, f"Missing UK button {bname} in {label}"
+    assert '"cheat_deletet"' not in txt, f"Typo cheat_deletet still present in {label}"
+    assert '0xf006' in txt and '0xa00b' in txt
+
     print(f"Patched {label}: addexp={ok1}, destroyarmor={ok2}, aimrange={ok3}, braces OK ({opens}), vars OK (undeclared={sorted(undeclared)}), wps={declared_wps}, zero Chinese.")
     return txt.replace("\n", "\r\n")
 
@@ -2352,8 +3061,9 @@ def rewrite_cheatsmod_pak():
 \t{"germany" "Axis"}
 \t{"usa" "Allies"}
 \t{"russian" "USSR"}
-\t{"common_wealth" "Commonwealth"}
-\t{"japan" "Japan"}
+\t{"common_wealth" "Finland"}
+\t{"japan" "Other / Special"}
+\t{"britain" "UK / Commonwealth"}
 """
     cm_pak = os.path.join(MOD, "resource", "map", "cheatsmod.pak")
     tmp_cm = cm_pak + ".tmp"
